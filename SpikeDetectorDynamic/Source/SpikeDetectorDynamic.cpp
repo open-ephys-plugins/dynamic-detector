@@ -261,7 +261,7 @@ bool SpikeDetectorDynamic::disable()
     return true;
 }
 
-void SpikeDetectorDynamic::addSpikeEvent(SpikeObject* s, MidiBuffer& eventBuffer, int peakIndex)
+void SpikeDetectorDynamic::addSpikeEvent(SpikeEvent* s, MidiBuffer& eventBuffer, int peakIndex)
 {
     s->eventType = SPIKE_EVENT_CODE;
 

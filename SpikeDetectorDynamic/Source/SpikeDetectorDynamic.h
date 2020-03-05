@@ -4,7 +4,6 @@
 
 #include <ProcessorHeaders.h>
 #include "SpikeDetectorDynamicEditor.h"
-#include <SpikeLib.h>
 
 struct SimpleElectrode
 {
@@ -149,8 +148,8 @@ private:
 
     void handleEvent(int eventType, MidiMessage& event, int sampleNum);
 
-    void addSpikeEvent(SpikeObject* s, MidiBuffer& eventBuffer, int peakIndex);
-    void addWaveformToSpikeObject(SpikeObject* s,
+    void addSpikeEvent(SpikeEvent* s, MidiBuffer& eventBuffer, int peakIndex);
+    void addWaveformToSpikeObject(SpikeEvent* s,
                                   int& peakIndex,
                                   int& electrodeNumber,
                                   int& currentChannel,
