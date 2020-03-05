@@ -41,7 +41,7 @@ public:
 
     /** Processes an incoming continuous buffer and places new
         spikes into the event buffer. */
-    void process(AudioSampleBuffer& buffer, MidiBuffer& events);
+    void process(AudioSampleBuffer& buffer);
 
     /** Used to alter parameters of data acquisition. */
     void setParameter(int parameterIndex, float newValue);
@@ -149,16 +149,16 @@ private:
     void handleEvent(int eventType, MidiMessage& event, int sampleNum);
 
     void addSpikeEvent(SpikeEvent* s, MidiBuffer& eventBuffer, int peakIndex);
-    void addWaveformToSpikeObject(SpikeEvent* s,
-                                  int& peakIndex,
-                                  int& electrodeNumber,
-                                  int& currentChannel,
-								  int dyn_threshold);
+  
+    void addWaveformToSpikeObject (SpikeEvent::SpikeBuffer& s,
+                                              int& peakIndex,
+                                              int& electrodeNumber,
+                                              int& currentChannel);
 
     void resetElectrode(SimpleElectrode*);
     
     uint16_t sampleRateForElectrode;
-	int window_size;
+	int window_size; //window used to calculate the threshold
 	float scalar = 0.6745f;
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpikeDetectorDynamic);
