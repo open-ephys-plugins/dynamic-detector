@@ -11,6 +11,7 @@ SpikeDetectorDynamic::SpikeDetectorDynamic()
 	    uniqueID(0),
         window_size(200)
 {
+    setProcessorType(PROCESSOR_TYPE_FILTER); //need to set the processor type manually
     //// the standard form:
     electrodeTypes.add("single electrode");
     electrodeTypes.add("stereotrode");
