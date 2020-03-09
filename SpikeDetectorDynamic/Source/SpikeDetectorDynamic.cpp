@@ -511,6 +511,29 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
     } // end cycle through electrodes
 }
 
+
+void SpikeDetectorDynamic::createSpikeChannels()
+{
+    for (int i = 0; i < electrodes.size(); ++i)
+    {
+        SimpleElectrode* elec = electrodes[i];
+        unsigned int nChans = elec->numChannels;
+        Array<const DataChannel*> chans;
+        for (int c = 0; c < nChans; c++)
+        {
+            const DataChannel* ch = getDataChannel(elec->channels[c]);
+            if (!ch)
+            {
+                //not enough channels for the electrodes
+                return;
+            }
+            chans.add(ch);
+        }
+        SpikeChannel* spk = new SpikeChannel(SpikeChannel::typeFromNumChannels(nChans), this, chans);
+        spk->setNumSamples(elec->prePeakSamples, elec->postPeakSamples);
+        spikeChannelArray.add(spk);
+    }
+}
 float SpikeDetectorDynamic::getNextSample(int& chan)
 {
     if (sampleIndex < 0)

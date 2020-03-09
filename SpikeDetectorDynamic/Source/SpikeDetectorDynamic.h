@@ -49,6 +49,8 @@ public:
     /** Called whenever the signal chain is altered. */
     void updateSettings();
 
+    void createSpikeChannels() override;
+
     /** Called prior to start of acquisition. */
     bool enable();
 
