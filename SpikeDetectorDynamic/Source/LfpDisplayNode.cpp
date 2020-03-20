@@ -132,6 +132,29 @@ void LfpDisplayNode::updateSettings()
     // update the editor's subprocessor selection display and sample rate
 	LfpDisplayEditor * ed = (LfpDisplayEditor*)getEditor();
 	ed->updateSubprocessorSelectorOptions();
+
+    //update spike channel
+    electrodes.clear();
+    for (int i = 0; i < spikeChannelArray.size(); ++i)
+    {
+        std::cout << "Adding electrode " << std::endl;
+
+        Electrode* elec = new Electrode();
+        elec->numChannels = spikeChannelArray[i]->getNumChannels();
+        elec->bitVolts = spikeChannelArray[i]->getChannelBitVolts(0); //lets assume all channels have the same bitvolts
+        elec->name = spikeChannelArray[i]->getName();
+        elec->currentSpikeIndex = 0;
+        //elec->mostRecentSpikes.ensureStorageAllocated(displayBufferSize);
+
+        for (int j = 0; j < elec->numChannels; ++j)
+        {
+            elec->displayThresholds.add(0);
+            elec->detectorThresholds.add(0);
+        }
+
+        electrodes.add(elec);
+
+    }
 }
 
 uint32 LfpDisplayNode::getEventSourceId(const EventChannel* event)
@@ -153,6 +176,13 @@ uint32 LfpDisplayNode::getDataSubprocId(int chan) const
 
     return getChannelSourceId(getDataChannel(chan));
 }
+
+OwnedArray<Electrode>* LfpViewer::LfpDisplayNode::getElectrodes()
+{
+    return &electrodes;
+}
+
+
 
 void LfpDisplayNode::setSubprocessor(uint32 sp)
 {
@@ -326,8 +356,22 @@ void LfpDisplayNode::handleEvent(const EventChannel* eventInfo, const MidiMessag
 }
 
 void LfpDisplayNode::handleSpike(const SpikeChannel* spikeInfo, const MidiMessage& event, int samplePosition) {
-    SpikeEventPtr newSpike = SpikeEvent::deserializeFromMessage(event, spikeInfo);
+    SpikeEventPtr newSpike = SpikeEvent::deserializeFromMessage(event, spikeInfo); // a smart pointer
     if (!newSpike) return;
+    
+    int electrodeNum = getSpikeChannelIndex(newSpike);
+    int timeStamp = newSpike->getTimestamp();
+
+    Electrode* e = electrodes[electrodeNum];
+
+    e->mostRecentSpikes.set(e->currentSpikeIndex, newSpike.release());
+    e->currentSpikeIndex++;
+
+    std::cout << "Spike saved: " << e->mostRecentSpikes.size() << std::endl;
+
+
+    //std::cout << "Spike received: (" << electrodeNum << ":" <<timeStamp << ") "<< std::endl;
+
 
     
 }

@@ -638,6 +638,11 @@ void LfpDisplayCanvas::setDrawableSubprocessor(uint32 sp)
 	update();
 }
 
+LfpDisplayNode* LfpViewer::LfpDisplayCanvas::getProccessor()
+{
+    return processor;
+}
+
 void LfpDisplayCanvas::redraw()
 {
     fullredraw=true;
@@ -3135,7 +3140,6 @@ LfpChannelDisplay::LfpChannelDisplay(LfpDisplayCanvas* c, LfpDisplay* d, LfpDisp
     , isHidden(false)
 {
 
-
     name = String(channelNumber+1); // default is to make the channelNumber the name
 
 
@@ -3147,6 +3151,8 @@ LfpChannelDisplay::LfpChannelDisplay(LfpDisplayCanvas* c, LfpDisplay* d, LfpDisp
 
     type = options->getChannelType(channelNumber);
     typeStr = options->getTypeName(type);
+
+    setSpikeElectrodes(c->getProccessor()->getElectrodes());
 
 }
 
@@ -3169,6 +3175,11 @@ void LfpChannelDisplay::updateType()
     typeStr = options->getTypeName(type);
 }
 
+void LfpViewer::LfpChannelDisplay::setSpikeElectrodes(OwnedArray<Electrode>* electrodes)
+{
+    spikeElectrodes = electrodes;
+}
+
 void LfpChannelDisplay::setEnabledState(bool state)
 {
 
@@ -3189,6 +3200,7 @@ void LfpChannelDisplay::setHidden(bool isHidden_)
 
 void LfpChannelDisplay::pxPaint()
 {
+    
     if (!isEnabled) return; // return early if THIS display is not enabled
     
     //get section of image corresponding to the channel
@@ -3352,6 +3364,7 @@ void LfpChannelDisplay::pxPaint()
             if (from_raw < -options->selectedSaturationValueFloat) { saturateWarningLo=true;};
             if (to_raw < -options->selectedSaturationValueFloat) { saturateWarningLo=true;};
             
+            // Determine if spike needs to be plotteed
             bool spikeFlag = display->getSpikeRasterPlotting()
                 && !(saturateWarningHi || saturateWarningLo)
                 && (from_raw - canvas->getYCoordMean(chan, i) < display->getSpikeRasterThreshold()
@@ -3433,6 +3446,10 @@ void LfpChannelDisplay::pxPaint()
                 clipWarningHi=false;
                 clipWarningLo=false;
             }
+
+            Electrode* e = (*spikeElectrodes)[0];
+            
+            std::cout << "Num of spikes: " << e->mostRecentSpikes.size() << std::endl;
             
             if (spikeFlag) // draw spikes
             {

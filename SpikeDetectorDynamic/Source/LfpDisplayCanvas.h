@@ -37,7 +37,7 @@
 namespace LfpViewer {
 
 class LfpDisplayNode;
-
+struct Electrode;
 class LfpTimescale;
 class LfpDisplay;
 class LfpChannelDisplay;
@@ -122,6 +122,8 @@ public:
     /** Delegates a subprocessor for drawing to the LfpDisplay referenced by this
         this canvas */
     void setDrawableSubprocessor(uint32 sp);
+
+    LfpDisplayNode* getProccessor(); //return the underlying processor
 
     const float getXCoord(int chan, int samp);
     const float getYCoord(int chan, int samp);
@@ -745,6 +747,8 @@ public:
 
     bool fullredraw; // used to indicate that a full redraw is required. is set false after each full redraw
 
+    void setSpikeElectrodes(OwnedArray<Electrode>* electrodes);
+
 protected:
 
     
@@ -778,6 +782,7 @@ protected:
 	DataChannel::DataChannelTypes type;
     String typeStr;
     
+    OwnedArray<Electrode>* spikeElectrodes;
     
 
 };

@@ -42,6 +42,24 @@ namespace LfpViewer
   @see GenericProcessor, LfpDisplayEditor, LfpDisplayCanvas
 
 */
+
+struct Electrode
+{
+    String name;
+
+    int numChannels;
+    int recordIndex;
+    int currentSpikeIndex;
+
+    Array<float> displayThresholds;
+    Array<float> detectorThresholds;
+
+    OwnedArray<SpikeEvent> mostRecentSpikes;
+
+    float bitVolts;
+
+};
+
 class LfpDisplayNode :  public GenericProcessor
 
 {
@@ -79,9 +97,13 @@ public:
 
     uint32 getDataSubprocId(int chan) const;
 
+    OwnedArray<Electrode>* getElectrodes();
+
 private:
     void initializeEventChannels();
     void finalizeEventChannels();
+
+    OwnedArray<Electrode> electrodes;
 
     ScopedPointer<AudioSampleBuffer> displayBuffer;
 
