@@ -168,6 +168,8 @@ public:
 
     ScopedPointer<LfpViewport> viewport;
 
+    int getTimeStampScreenStart(int chan);
+
 private:
     
     float sampleRate;
@@ -218,6 +220,8 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LfpDisplayCanvas);
 
+    Array<int> timeStampScreenStsart; //store the display buffer index at the beginning of screen buffer
+    Array<int> wrapAroundCycle;
 };
 
     
@@ -782,8 +786,7 @@ protected:
 	DataChannel::DataChannelTypes type;
     String typeStr;
     
-    OwnedArray<Electrode>* spikeElectrodes;
-    
+    OwnedArray<Electrode>* spikeElectrodes;    
 
 };
    

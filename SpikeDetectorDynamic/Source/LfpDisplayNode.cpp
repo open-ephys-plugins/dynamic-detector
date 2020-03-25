@@ -182,6 +182,12 @@ OwnedArray<Electrode>* LfpViewer::LfpDisplayNode::getElectrodes()
     return &electrodes;
 }
 
+int64 LfpViewer::LfpDisplayNode::getDisplayBufferStartTimestamp(int chan)
+{
+    //return the timestasmp of the beginning of the display buffer
+    return displayBufferStartTimestamp[chan];
+}
+
 
 
 void LfpDisplayNode::setSubprocessor(uint32 sp)
@@ -231,6 +237,10 @@ bool LfpDisplayNode::resizeBuffer()
 
 		displayBufferIndex.clear();
 		displayBufferIndex.insertMultiple(0, 0, nInputs + 1);
+
+        displayBufferStartTimestamp.clear();
+        displayBufferStartTimestamp.insertMultiple(0, 0, nInputs + 1);
+
 
 		return true;
 	}
@@ -367,7 +377,7 @@ void LfpDisplayNode::handleSpike(const SpikeChannel* spikeInfo, const MidiMessag
     e->mostRecentSpikes.set(e->currentSpikeIndex, newSpike.release());
     e->currentSpikeIndex++;
 
-    std::cout << "Spike saved: " << e->mostRecentSpikes.size() << std::endl;
+    //std::cout << "Spike saved: " << e->mostRecentSpikes.size() << std::endl;
 
 
     //std::cout << "Spike received: (" << electrodeNum << ":" <<timeStamp << ") "<< std::endl;
@@ -443,6 +453,7 @@ void LfpDisplayNode::process (AudioSampleBuffer& buffer)
 {
     // 1. place any new samples into the displayBuffer
     //std::cout << "Display node sample count: " << nSamples << std::endl; ///buffer.getNumSamples() << std::endl;
+    
 
 	if (true)
 	{
@@ -484,6 +495,7 @@ void LfpDisplayNode::process (AudioSampleBuffer& buffer)
                         // Copy the remaining, rewrite from the beginning
 
 						const int extraSamples = nSamples - samplesLeft;
+                        
 
 						displayBuffer->copyFrom(channelIndex,                      // destChannel
 							displayBufferIndex[channelIndex],  // destStartSample
@@ -500,6 +512,12 @@ void LfpDisplayNode::process (AudioSampleBuffer& buffer)
 							extraSamples);             // numSamples
 
 						displayBufferIndex.set(channelIndex, extraSamples);
+
+                        //Record the timestamp at the beginning of buffer
+                        displayBufferStartTimestamp.set(chan,getTimestamp(0) + samplesLeft);
+                        if (chan == 0)
+                            std::cout << "displayBufferStartTimestamp: " << displayBufferStartTimestamp[chan] << std::endl;
+                        
 					}
 				}
 			}

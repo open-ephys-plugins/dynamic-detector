@@ -225,6 +225,10 @@ void LfpDisplayCanvas::update()
         arr->clearQuick();
         arr->insertMultiple(0, 0, nChans + 1); // extra channel for events
     }
+
+    //clear some bookkeeping variables
+    wrapAroundCycle.clearQuick();
+    wrapAroundCycle.insertMultiple(0, 0, nChans + 1);
     
     options->setEnabled(nChans != 0);
     // must manually ensure that overlapSelection propagates up to canvas
@@ -359,7 +363,8 @@ void LfpDisplayCanvas::updateScreenBuffer()
 
 			
 
-			lastScreenBufferIndex.set(channel, sbi);
+			lastScreenBufferIndex.set(channel, sbi); // index of current screen buffer
+            //std::cout << "Last screenbuffer:" << sbi << std::endl;
 
 			int index = processor->getDisplayBufferIndex(channel);
 
@@ -388,20 +393,30 @@ void LfpDisplayCanvas::updateScreenBuffer()
 			dbi %= displayBufferSize; // make sure we're not overshooting
 			int nextPos = (dbi + 1) % displayBufferSize; //  position next to displayBufferIndex in display buffer to copy from
 
-			//         if (channel == 0)
-			//             std::cout << "Channel " 
-			//                       << channel << " : " 
-			//                       << sbi << " : " 
-			//                       << index << " : " 
-			//                       << dbi << " : " 
-			//                       << valuesNeeded << " : " 
-			//                       << ratio 
-			//                                     << std::endl;
+            //Mark down the correspending display buffer index at the beginning of screen buffer
+            if (sbi == 0) {
+                int newTimeStamp = wrapAroundCycle[channel] * displayBufferSize + dbi;
+                timeStampScreenStsart.set(channel, newTimeStamp);
+  
+            }
 
+			if (channel == 0)
+			    std::cout << "Channel " 
+			            << channel << " : " 
+			            << sbi << " : " 
+			            << index << " : " 
+			            << dbi << " : "  // store 10s of data, wrap back when dbi > 10*Fs
+			            << valuesNeeded << " : " 
+			            << ratio << " : "
+                        << getTimeStampScreenStart(channel)
+			                            << std::endl;
+
+            //valuesNeeded: number of samples needed in the screen buffer
 			if (valuesNeeded > 0 && valuesNeeded < 1000000)
 			{
 				for (int i = 0; i < valuesNeeded; i++) // also fill one extra sample for line drawing interpolation to match across draws
 				{
+                    // Fill the screenbuffer with number of valuesNeeded samples
 					//If paused don't update screen buffers, but update all indexes as needed
 					if (!lfpDisplay->isPaused)
 					{
@@ -447,6 +462,8 @@ void LfpDisplayCanvas::updateScreenBuffer()
 							//    std::cout << "np " ;
 							nextpix = dbi;
 						}
+
+                        // the sbi and dbi are aligned
 
                         // - Calculate the min and max
 						for (int j = dbi; j < nextpix; j++)
@@ -504,12 +521,16 @@ void LfpDisplayCanvas::updateScreenBuffer()
 						sbi++;
 					}
 
+                    //move the displaybuffer index forward by ratio
 					subSampleOffset += ratio;
 
 					while (subSampleOffset >= 1.0)
 					{
-						if (++dbi > displayBufferSize) //move the display index forward according to the downsample ratio
-							dbi = 0;
+                        if (++dbi > displayBufferSize) //move the display index forward according to the downsample ratio
+                        {
+                            dbi = 0;
+                            wrapAroundCycle.set(channel, wrapAroundCycle[channel]+1); //increae wraparound count
+                        }
 
 						nextPos = (dbi + 1) % displayBufferSize;
 						subSampleOffset -= 1.0;
@@ -648,6 +669,13 @@ void LfpDisplayCanvas::redraw()
     fullredraw=true;
     repaint();
     refresh();
+}
+
+
+int LfpDisplayCanvas::getTimeStampScreenStart(int chan)
+{
+    // return the timetsamp of the screen start position
+    return timeStampScreenStsart[chan];
 }
 
 
@@ -3447,9 +3475,28 @@ void LfpChannelDisplay::pxPaint()
                 clipWarningLo=false;
             }
 
-            Electrode* e = (*spikeElectrodes)[0];
+            // Figure out which electrode it is 
+            int electrodeNum = chan/4; //TODO: hardcoded for now
+            Electrode* e = (*spikeElectrodes)[electrodeNum];
+
+            //  Get the screen index, convert to display index, then get the sample timestamp
+            // Check if the sample timestamp matches with 
             
-            std::cout << "Num of spikes: " << e->mostRecentSpikes.size() << std::endl;
+            
+      /*      if (e->mostRecentSpikes.size() > 10) {
+                int lastSpikeIdx = e->mostRecentSpikes.size() - 1;
+                auto channelInfo = e->mostRecentSpikes[lastSpikeIdx]->getChannelInfo();
+                auto srcChanInfo = channelInfo->getSourceChannelInfo();
+                auto timestamp = e->mostRecentSpikes[lastSpikeIdx]->getTimestamp();
+
+                std::cout << "Last spike at "<< timestamp <<" from channel ";
+               
+                for (int si = 0; si < srcChanInfo.size(); si++) {
+                    std::cout << srcChanInfo[si].channelIDX <<" ";
+                }
+                std::cout << std::endl;
+            }*/
+            
             
             if (spikeFlag) // draw spikes
             {

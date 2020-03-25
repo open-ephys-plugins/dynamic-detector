@@ -99,6 +99,8 @@ public:
 
     OwnedArray<Electrode>* getElectrodes();
 
+    int64 getDisplayBufferStartTimestamp(int chan);
+
 private:
     void initializeEventChannels();
     void finalizeEventChannels();
@@ -111,7 +113,8 @@ private:
     Array<uint32> eventSourceNodes;
 
     float displayGain; //
-    float bufferLength; // s
+    float bufferLength; // 
+    Array<int64> displayBufferStartTimestamp; //timestamp of the beginning of display buffer, in no. of samples, not actual time
 
     AbstractFifo abstractFifo;
 
