@@ -381,7 +381,9 @@ void LfpDisplayCanvas::updateScreenBuffer()
 
 
 			float ratio = sampleRate * timebase / float(getWidth() - leftmargin - scrollBarThickness); // samples / pixel
-			// this number is crucial: converting from samples to values (in px) for the screen buffer
+			
+            screenPixelRatio.set(channel, ratio);
+                                                                                                           // this number is crucial: converting from samples to values (in px) for the screen buffer
 			int valuesNeeded = (int) float(nSamples) / ratio; // N pixels needed for this update
 
 			if (sbi + valuesNeeded > maxSamples)  // crop number of samples to fit canvas width
@@ -400,16 +402,16 @@ void LfpDisplayCanvas::updateScreenBuffer()
   
             }
 
-			if (channel == 0)
-			    std::cout << "Channel " 
-			            << channel << " : " 
-			            << sbi << " : " 
-			            << index << " : " 
-			            << dbi << " : "  // store 10s of data, wrap back when dbi > 10*Fs
-			            << valuesNeeded << " : " 
-			            << ratio << " : "
-                        << getTimeStampScreenStart(channel)
-			                            << std::endl;
+			//if (channel == 0)
+			//    std::cout << "Channel " 
+			//            << channel << " : " 
+			//            << sbi << " : " 
+			//            << index << " : " 
+			//            << dbi << " : "  // store 10s of data, wrap back when dbi > 10*Fs
+			//            << valuesNeeded << " : " 
+			//            << ratio << " : "
+   //                     << getTimeStampScreenStart(channel)
+			//                            << std::endl;
 
             //valuesNeeded: number of samples needed in the screen buffer
 			if (valuesNeeded > 0 && valuesNeeded < 1000000)
@@ -676,6 +678,11 @@ int LfpDisplayCanvas::getTimeStampScreenStart(int chan)
 {
     // return the timetsamp of the screen start position
     return timeStampScreenStsart[chan];
+}
+
+float LfpViewer::LfpDisplayCanvas::getScreenPixelRatio(int chan)
+{
+    return screenPixelRatio[chan];
 }
 
 
@@ -3251,6 +3258,7 @@ void LfpChannelDisplay::pxPaint()
     if (jto_wholechannel >= display->lfpChannelBitmap.getHeight()) {jto_wholechannel=display->lfpChannelBitmap.getHeight()-1;};
     
     // draw most recent drawn sample position
+    // Draw the vertical line indicating the update
     if (canvas->screenBufferIndex[chan]+1 <= display->lfpChannelBitmap.getWidth())
         for (int k=jfrom_wholechannel; k<=jto_wholechannel; k+=2) // draw line
             bdLfpChannelBitmap.setPixelColour(canvas->screenBufferIndex[chan]+1,k, Colours::yellow);
@@ -3296,34 +3304,34 @@ void LfpChannelDisplay::pxPaint()
         if (i < display->lfpChannelBitmap.getWidth())
         {
             //draw zero line
-            int m = getY()+center;
-            
-            if(m > 0 && m < display->lfpChannelBitmap.getHeight())
+            int m = getY() + center;
+
+            if (m > 0 && m < display->lfpChannelBitmap.getHeight())
             {
-                if ( bdLfpChannelBitmap.getPixelColour(i,m) == display->backgroundColour ) { // make sure we're not drawing over an existing plot from another channel
-                    bdLfpChannelBitmap.setPixelColour(i,m,Colour(50,50,50));
+                if (bdLfpChannelBitmap.getPixelColour(i, m) == display->backgroundColour) { // make sure we're not drawing over an existing plot from another channel
+                    bdLfpChannelBitmap.setPixelColour(i, m, Colour(50, 50, 50));
                 }
             }
-            
+
             //draw range markers
             if (isSelected)
             {
-                int start = getY()+center -channelHeight/2;
-                int jump = channelHeight/4;
-                
-                for (m = start; m <= start + jump*4; m += jump)
+                int start = getY() + center - channelHeight / 2;
+                int jump = channelHeight / 4;
+
+                for (m = start; m <= start + jump * 4; m += jump)
                 {
                     if (m > 0 && m < display->lfpChannelBitmap.getHeight())
                     {
-                        if ( bdLfpChannelBitmap.getPixelColour(i,m) == display->backgroundColour ) // make sure we're not drawing over an existing plot from another channel
-                            bdLfpChannelBitmap.setPixelColour(i, m, Colour(80,80,80));
+                        if (bdLfpChannelBitmap.getPixelColour(i, m) == display->backgroundColour) // make sure we're not drawing over an existing plot from another channel
+                            bdLfpChannelBitmap.setPixelColour(i, m, Colour(80, 80, 80));
                     }
                 }
             }
-            
+
             // draw event markers
             int rawEventState = canvas->getYCoord(canvas->getNumChannels(), i);// get last channel+1 in buffer (represents events)
-            
+
             //for (int ev_ch = 0; ev_ch < 8 ; ev_ch++) // for all event channels
             //{
 
@@ -3342,67 +3350,67 @@ void LfpChannelDisplay::pxPaint()
             //        }
             //    }
             //}
-            
+
             //std::cout << "e " << canvas->getYCoord(canvas->getNumChannels()-1, i) << std::endl;
-            
-            
+
+
             // set max-min range for plotting, used in all methods
-            double a = (canvas->getYCoordMax(chan, i)/range*channelHeightFloat);
-            double b = (canvas->getYCoordMin(chan, i)/range*channelHeightFloat);
-            
-            double mean = (canvas->getMean(chan)/range*channelHeightFloat);
-            
+            double a = (canvas->getYCoordMax(chan, i) / range * channelHeightFloat);
+            double b = (canvas->getYCoordMin(chan, i) / range * channelHeightFloat);
+
+            double mean = (canvas->getMean(chan) / range * channelHeightFloat);
+
             if (drawWithOffsetCorrection)
             {
                 a -= mean;
                 b -= mean;
             }
-            
+
             double a_raw = canvas->getYCoordMax(chan, i);
             double b_raw = canvas->getYCoordMin(chan, i);
-            double from_raw=0; double to_raw=0;
-            
+            double from_raw = 0; double to_raw = 0;
+
             //double m = (canvas->getYCoordMean(chan, i)/range*channelHeightFloat)+getHeight()/2;
-            if (a<b)
+            if (a < b)
             {
                 from = (a); to = (b);
                 from_raw = (a_raw); to_raw = (b_raw);
-                
+
             }
             else
             {
                 from = (b); to = (a);
                 from_raw = (b_raw); to_raw = (a_raw);
             }
-            
+
             // start by clipping so that we're not populating pixels that we dont want to plot
-            int lm= channelHeightFloat*canvas->channelOverlapFactor;
-            if (lm>0)
-                lm=-lm;
-            
-            if (from > -lm) {from = -lm; clipWarningHi=true;};
-            if (to > -lm) {to = -lm; clipWarningHi=true;};
-            if (from < lm) {from = lm; clipWarningLo=true;};
-            if (to < lm) {to = lm; clipWarningLo=true;};
-            
-            
+            int lm = channelHeightFloat * canvas->channelOverlapFactor;
+            if (lm > 0)
+                lm = -lm;
+
+            if (from > -lm) { from = -lm; clipWarningHi = true; };
+            if (to > -lm) { to = -lm; clipWarningHi = true; };
+            if (from < lm) { from = lm; clipWarningLo = true; };
+            if (to < lm) { to = lm; clipWarningLo = true; };
+
+
             // test if raw data is clipped for displaying saturation warning
-            if (from_raw > options->selectedSaturationValueFloat) { saturateWarningHi=true;};
-            if (to_raw > options->selectedSaturationValueFloat) { saturateWarningHi=true;};
-            if (from_raw < -options->selectedSaturationValueFloat) { saturateWarningLo=true;};
-            if (to_raw < -options->selectedSaturationValueFloat) { saturateWarningLo=true;};
-            
+            if (from_raw > options->selectedSaturationValueFloat) { saturateWarningHi = true; };
+            if (to_raw > options->selectedSaturationValueFloat) { saturateWarningHi = true; };
+            if (from_raw < -options->selectedSaturationValueFloat) { saturateWarningLo = true; };
+            if (to_raw < -options->selectedSaturationValueFloat) { saturateWarningLo = true; };
+
             // Determine if spike needs to be plotteed
             bool spikeFlag = display->getSpikeRasterPlotting()
                 && !(saturateWarningHi || saturateWarningLo)
                 && (from_raw - canvas->getYCoordMean(chan, i) < display->getSpikeRasterThreshold()
-                        || to_raw - canvas->getYCoordMean(chan, i) < display->getSpikeRasterThreshold()); // either point lower than the spike threshold
-            
-            from = from + getHeight()/2;       // so the plot is centered in the channeldisplay
-            to = to + getHeight()/2;
-            
+                    || to_raw - canvas->getYCoordMean(chan, i) < display->getSpikeRasterThreshold()); // either point lower than the spike threshold
+
+            from = from + getHeight() / 2;       // so the plot is centered in the channeldisplay
+            to = to + getHeight() / 2;
+
             int samplerange = to - from;
-            
+
             if (drawMethod) // switched between 'supersampled' drawing and simple pixel wise drawing
             { // histogram based supersampling method
                 plotterInfo.channelID = chan;
@@ -3418,69 +3426,134 @@ void LfpChannelDisplay::pxPaint()
                 plotterInfo.samplesPerPixel = canvas->getSamplesPerPixel(chan, i);
                 plotterInfo.histogramParameterA = canvas->histogramParameterA;
                 plotterInfo.samplerange = samplerange;
-                
+
                 // TODO: (kelly) complete transition toward plotter class encapsulation
 //                display->getPlotterPtr()->plot(bdLfpChannelBitmap, plotterInfo);
-                
+
             }
             else //drawmethod
             { // simple per-pixel min-max drawing, has no anti-aliasing, but runs faster
-                
+
                 plotterInfo.channelID = chan;
                 plotterInfo.y = getY();
                 plotterInfo.from = from;
                 plotterInfo.to = to;
                 plotterInfo.samp = i;
                 plotterInfo.lineColour = lineColour;
-                
+
                 // TODO: (kelly) complete transition toward plotter class encapsulation
 //                display->getPlotterPtr()->plot(bdLfpChannelBitmap, plotterInfo); // plotterInfo is prepared above
-                
+
             }
-            
+
             // Do the actual plotting for the selected plotting method
             //if (!display->getSpikeRasterPlotting())
-                display->getPlotterPtr()->plot(bdLfpChannelBitmap, plotterInfo);
-            
-                
-                
-                
+            display->getPlotterPtr()->plot(bdLfpChannelBitmap, plotterInfo);
+
+
+
+
             // now draw warnings, if needed
             if (canvas->drawClipWarning) // draw simple warning if display cuts off data
             {
-                
-                if(clipWarningHi) {
-                    for (int j=0; j<=3; j++)
+
+                if (clipWarningHi) {
+                    for (int j = 0; j <= 3; j++)
                     {
                         int clipmarker = jto_wholechannel_clip;
-                        
-                        if(clipmarker>0 && clipmarker<display->lfpChannelBitmap.getHeight()){
-                            bdLfpChannelBitmap.setPixelColour(i,clipmarker-j,Colour(255,255,255));
+
+                        if (clipmarker > 0 && clipmarker < display->lfpChannelBitmap.getHeight()) {
+                            bdLfpChannelBitmap.setPixelColour(i, clipmarker - j, Colour(255, 255, 255));
                         }
                     }
                 }
-                
-                if(clipWarningLo) {
-                    for (int j=0; j<=3; j++)
+
+                if (clipWarningLo) {
+                    for (int j = 0; j <= 3; j++)
                     {
                         int clipmarker = jfrom_wholechannel_clip;
-                        
-                        if(clipmarker>0 && clipmarker<display->lfpChannelBitmap.getHeight()){
-                            bdLfpChannelBitmap.setPixelColour(i,clipmarker+j,Colour(255,255,255));
+
+                        if (clipmarker > 0 && clipmarker < display->lfpChannelBitmap.getHeight()) {
+                            bdLfpChannelBitmap.setPixelColour(i, clipmarker + j, Colour(255, 255, 255));
                         }
                     }
                 }
-                
-                clipWarningHi=false;
-                clipWarningLo=false;
+
+                clipWarningHi = false;
+                clipWarningLo = false;
             }
 
+            ////////////////////////////////////////
+            // Plotting spikes
             // Figure out which electrode it is 
-            int electrodeNum = chan/4; //TODO: hardcoded for now
-            Electrode* e = (*spikeElectrodes)[electrodeNum];
+            spikeFlag = false;
 
-            //  Get the screen index, convert to display index, then get the sample timestamp
-            // Check if the sample timestamp matches with 
+            if (chan < (*spikeElectrodes).size()*4) {
+                //skip the event channel
+                int electrodeNum = chan / 4; //TODO: hardcoded for now
+                Electrode* e = (*spikeElectrodes)[electrodeNum];
+
+                // First remove spikes that are off screen
+                auto startTimeStamp = canvas->getTimeStampScreenStart(chan);
+
+                int idx2delete = -1;
+                for (int spikeIdx = 0; spikeIdx < e->mostRecentSpikes.size(); spikeIdx++) {
+                    auto timestamp = e->mostRecentSpikes[spikeIdx]->getTimestamp();
+                    if (timestamp < startTimeStamp) {
+                        // Assume the spikes are sorted in ascending order of their timestamp
+                        idx2delete = spikeIdx;
+                    }
+                    else {
+                        break;
+                    }
+                }
+
+                //TDOO: possible bug: if the spikes are detected after the signals are draw, they will never be shown
+
+                if (chan == 0) {
+                    std::cout << "spike array size: " << e->mostRecentSpikes.size() << std::endl;
+                }
+
+                if (chan % 4 == 0) {
+                    if (idx2delete >= 0) {
+                        // TODO: possibe concurreny issue here, as different channels are accessing the
+                        // same objects
+                        e->mostRecentSpikes.removeRange(0, idx2delete);
+                    }
+                }
+
+
+                auto ratio = canvas->getScreenPixelRatio(chan);
+                auto curTimestamp = round(startTimeStamp + i * ratio);
+
+
+                for (int spikeIdx = 0; spikeIdx < e->mostRecentSpikes.size(); spikeIdx++) {
+                    // check if there is a spike hit
+                    auto spikeTimestamp = e->mostRecentSpikes[spikeIdx]->getTimestamp();
+
+                /*    if (chan == 0) {
+                        std::cout << spikeTimestamp <<" ";
+                    }*/
+                    // The screen pixel are downsampled from the display buffer
+                    // So there may not be an exact match
+                    if (abs(curTimestamp -spikeTimestamp) < ratio) {
+                        //std::cout << "Spike hit at " << (startTimeStamp + i*ratio) << std::endl;
+                        spikeFlag = true;
+
+                    }
+
+
+                }
+
+       /*         if (chan == 0) {
+                    std::cout << std::endl;
+                    std::cout << "[" << curTimestamp << "]" << std::endl;
+                }*/
+
+                //std::cout << "[" << curTimestamp << "]" << std::endl;
+
+            }
+            
             
             
       /*      if (e->mostRecentSpikes.size() > 10) {

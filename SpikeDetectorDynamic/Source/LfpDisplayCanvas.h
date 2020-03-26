@@ -169,6 +169,7 @@ public:
     ScopedPointer<LfpViewport> viewport;
 
     int getTimeStampScreenStart(int chan);
+    float getScreenPixelRatio(int chan);
 
 private:
     
@@ -222,6 +223,8 @@ private:
 
     Array<int> timeStampScreenStsart; //store the display buffer index at the beginning of screen buffer
     Array<int> wrapAroundCycle;
+    Array<float> screenPixelRatio; //ratio of screen pixel to sample points
+
 };
 
     
@@ -786,7 +789,7 @@ protected:
 	DataChannel::DataChannelTypes type;
     String typeStr;
     
-    OwnedArray<Electrode>* spikeElectrodes;    
+    OwnedArray<Electrode>* spikeElectrodes; 
 
 };
    
