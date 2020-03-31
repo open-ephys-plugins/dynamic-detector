@@ -3579,7 +3579,7 @@ void LfpChannelDisplay::pxPaint()
                     if(k>0 && k<display->lfpChannelBitmap.getHeight()){
                         //bdLfpChannelBitmap.setPixelColour(i,k,lineColour);
                         Colour currentcolor = display->channelColours[chan];
-                        bdLfpChannelBitmap.setPixelColour(i, k, bdLfpChannelBitmap.getPixelColour(i, k).interpolatedWith(currentcolor, 0.5f));
+                        bdLfpChannelBitmap.setPixelColour(i, k, bdLfpChannelBitmap.getPixelColour(i, k).interpolatedWith(currentcolor, 0.3f));
                     }
                 };
             }
