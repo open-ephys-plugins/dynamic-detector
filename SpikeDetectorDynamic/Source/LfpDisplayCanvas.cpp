@@ -3545,7 +3545,7 @@ void LfpChannelDisplay::pxPaint()
 
                 //TODO: possible bug: if the spikes are detected after the signals are draw, they will never be shown
 
-                if (chan == 4) {
+        /*        if (chan == 4) {
                     std::cout << "start time stamp: " << startTimeStamp << std::endl;
                     std::cout << "idx2delete: " << idx2delete << std::endl;
 
@@ -3555,7 +3555,7 @@ void LfpChannelDisplay::pxPaint()
                         std::cout << timestamp <<" "; 
                     }
                     std::cout << ")"<< std::endl;
-                }
+                }*/
 
                 // One electrode can contains multiple channels, each of the electrode has an array
                 // containining a list of spike events
