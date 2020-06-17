@@ -221,7 +221,7 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LfpDisplayCanvas);
 
-    Array<int> timeStampScreenStsart; //store the display buffer index at the beginning of screen buffer
+    Array<int> timeStampScreenStart; //store the display buffer index at the beginning of screen buffer
     Array<int> wrapAroundCycle;
     Array<float> screenPixelRatio; //ratio of screen pixel to sample points
 

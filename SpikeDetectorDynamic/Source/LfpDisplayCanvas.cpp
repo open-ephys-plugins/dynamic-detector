@@ -188,13 +188,37 @@ void LfpDisplayCanvas::beginAnimation()
 
 	if (true)
 	{
-
+        //clear screen buffer
 		displayBufferSize = displayBuffer->getNumSamples();
 
 		for (int i = 0; i < screenBufferIndex.size(); i++)
 		{
 			screenBufferIndex.set(i, 0);
 		}
+
+        // clear screen start timestamp
+        for (int i = 0; i < timeStampScreenStart.size(); i++) {
+            timeStampScreenStart.set(i, 0);
+        }
+
+        for (int i = 0; i < lastScreenBufferIndex.size(); i++) {
+            lastScreenBufferIndex.set(i, 0);
+        }
+
+        for (int i = 0; i < wrapAroundCycle.size(); i++) {
+            wrapAroundCycle.set(i, 0);
+        }
+
+        for (int i = 0; i < displayBufferIndex.size(); i++) {
+            displayBufferIndex.set(i, 0);
+        }
+        
+        
+
+        //Electrode* e = (*spikeElectrodes)[electrodeNum];
+
+
+
 
 		startCallbacks();
 	}	
@@ -398,7 +422,7 @@ void LfpDisplayCanvas::updateScreenBuffer()
             //Mark down the correspending display buffer index at the beginning of screen buffer
             if (sbi == 0) {
                 int newTimeStamp = wrapAroundCycle[channel] * displayBufferSize + dbi;
-                timeStampScreenStsart.set(channel, newTimeStamp);
+                timeStampScreenStart.set(channel, newTimeStamp);
   
             }
 
@@ -677,7 +701,7 @@ void LfpDisplayCanvas::redraw()
 int LfpDisplayCanvas::getTimeStampScreenStart(int chan)
 {
     // return the timetsamp of the screen start position
-    return timeStampScreenStsart[chan];
+    return timeStampScreenStart[chan];
 }
 
 float LfpViewer::LfpDisplayCanvas::getScreenPixelRatio(int chan)
@@ -3521,7 +3545,7 @@ void LfpChannelDisplay::pxPaint()
 
                 //TODO: possible bug: if the spikes are detected after the signals are draw, they will never be shown
 
-            /*    if (chan == 4) {
+                if (chan == 4) {
                     std::cout << "start time stamp: " << startTimeStamp << std::endl;
                     std::cout << "idx2delete: " << idx2delete << std::endl;
 
@@ -3531,7 +3555,7 @@ void LfpChannelDisplay::pxPaint()
                         std::cout << timestamp <<" "; 
                     }
                     std::cout << ")"<< std::endl;
-                }*/
+                }
 
                 // One electrode can contains multiple channels, each of the electrode has an array
                 // containining a list of spike events
@@ -3576,21 +3600,6 @@ void LfpChannelDisplay::pxPaint()
 
             }
             
-            
-            
-      /*      if (e->mostRecentSpikes.size() > 10) {
-                int lastSpikeIdx = e->mostRecentSpikes.size() - 1;
-                auto channelInfo = e->mostRecentSpikes[lastSpikeIdx]->getChannelInfo();
-                auto srcChanInfo = channelInfo->getSourceChannelInfo();
-                auto timestamp = e->mostRecentSpikes[lastSpikeIdx]->getTimestamp();
-
-                std::cout << "Last spike at "<< timestamp <<" from channel ";
-               
-                for (int si = 0; si < srcChanInfo.size(); si++) {
-                    std::cout << srcChanInfo[si].channelIDX <<" ";
-                }
-                std::cout << std::endl;
-            }*/
             
             
             if (spikeFlag) // draw spikes
