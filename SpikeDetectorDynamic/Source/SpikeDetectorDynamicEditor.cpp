@@ -13,7 +13,7 @@ SpikeDetectorDynamicEditor::SpikeDetectorDynamicEditor(GenericProcessor* parentN
     Typeface::Ptr typeface = new CustomTypeface(mis);
     font = Font(typeface);
 
-    desiredWidth = 300;
+    desiredWidth = 380;
 
     electrodeTypes = new ComboBox("Electrode Types");
 
@@ -95,6 +95,33 @@ SpikeDetectorDynamicEditor::SpikeDetectorDynamicEditor(GenericProcessor* parentN
     thresholdLabel->setBounds(202, 105, 95, 15);
     thresholdLabel->setColour(Label::textColourId, Colours::grey);
     addAndMakeVisible(thresholdLabel);
+
+    detectionMethod = new ComboBox("Detection method");
+    detectionMethod->setJustificationType(Justification::centredLeft);
+    detectionMethod->addListener(this);
+    detectionMethod->setBounds(285, 35, 75, 20);
+   
+
+    for (int i = 0; i < processor->detectionMethod.size(); i++)
+    {
+        String method = processor->detectionMethod[i];
+        detectionMethod->addItem(method, i+1);
+    }
+
+    detectionMethod->setSelectedId(1);
+    addAndMakeVisible(detectionMethod);
+
+    thresholdTextBox = new Label("thresholdText", "3");
+    thresholdTextBox->setEditable(true);
+    thresholdTextBox->setColour(Label::textColourId, Colours::white);
+    thresholdTextBox->setColour(Label::backgroundColourId, Colours::grey);
+    thresholdTextBox->setBounds(285, 65, 20, 20);
+    addAndMakeVisible(thresholdTextBox);
+
+    setAllThresholdBtn = new TextButton("Set all");
+    setAllThresholdBtn->setBounds(315, 65, 40, 20);
+    setAllThresholdBtn->addListener(this);
+    addAndMakeVisible(setAllThresholdBtn);
 
     channelSelector->inactivateButtons();
     channelSelector->paramButtonsToggledByDefault(false);
@@ -306,6 +333,31 @@ void SpikeDetectorDynamicEditor::buttonEvent(Button* button)
 		CoreServices::updateSignalChain(this);
 		CoreServices::highlightEditor(this);
         return;
+    }
+    else if (button == setAllThresholdBtn) {
+        //set all threshold to be the same number
+
+        double threshold = double(thresholdTextBox->getTextValue().getValue());
+
+
+        Array<double> thresholds;
+
+        SpikeDetectorDynamic* processor = (SpikeDetectorDynamic*)getProcessor();
+
+        //loop through all electrode and all channel in the electrode to set threshold
+        for (int i = 0; i < electrodeList->getNumItems(); i++) {
+            for (int j = 0; j < electrodeButtons.size(); j++) {
+                thresholds.add(threshold);
+               processor->setChannelThreshold(i,
+                    j,
+                    threshold);
+            }
+            
+        }
+
+        thresholdSlider->setValues(thresholds);
+        thresholdSlider->repaint(); //force refresh display
+
     }
 }
 

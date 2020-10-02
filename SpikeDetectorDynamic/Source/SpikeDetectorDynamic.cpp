@@ -17,6 +17,12 @@ SpikeDetectorDynamic::SpikeDetectorDynamic()
     electrodeTypes.add("stereotrode");
     electrodeTypes.add("tetrode");
 
+    //detection method
+    detectionMethod.add("Median");
+    detectionMethod.add("Simple");
+
+    //
+
     for (int i = 0; i < electrodeTypes.size()+1; i++)
     {
         electrodeCounter.add(0);

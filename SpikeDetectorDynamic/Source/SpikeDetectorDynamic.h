@@ -112,6 +112,7 @@ public:
 
     /** Returns a list of possible electrode types (e.g., stereotrode, tetrode). */
     StringArray electrodeTypes;
+    StringArray detectionMethod;
 
     void setChannelThreshold(int electrodeNum, int channelNum, float threshold);
 

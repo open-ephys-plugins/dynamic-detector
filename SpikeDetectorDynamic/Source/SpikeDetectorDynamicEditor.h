@@ -51,6 +51,11 @@ private:
     OwnedArray<ElectrodeButton> electrodeButtons;
     Array<ElectrodeEditorButton*> electrodeEditorButtons;
 
+    ComboBox* detectionMethod;
+    Label* detectionMethodLabel;
+    Label* thresholdTextBox;
+    TextButton* setAllThresholdBtn; //button to set all threshold
+
     void editElectrode(int index, int chan, int newChan);
 
     int lastId;
