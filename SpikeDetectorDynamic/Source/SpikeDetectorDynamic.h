@@ -43,6 +43,10 @@ public:
         spikes into the event buffer. */
     void process(AudioSampleBuffer& buffer);
 
+    void computeMedianThreshold(SimpleElectrode* electrode, int nSamples, int& sample_counter, std::vector<std::vector<float>>& dyn_thresholds, int& window_number);
+
+    void computeSimpleThreshold(SimpleElectrode* electrode, std::vector<std::vector<float>>& dyn_thresholds);
+
     void AddSpikeEvent(int& peakIndex, SimpleElectrode* electrode, int& i);
 
     /** Used to alter parameters of data acquisition. */

@@ -3587,13 +3587,15 @@ void LfpChannelDisplay::pxPaint()
                     // So there may not be an exact match
                     if (abs(curTimestamp -spikeTimestamp) < ratio) {
                         //std::cout << "Spike hit at " << (startTimeStamp + i*ratio) << std::endl;
+                        // TODO: remove repeated check by multiple channel on the same spike
                         spikeFlag = true;
+                        idx2delete = spikeIdx;
                         break;
 
                     }
-
-
                 }
+
+
 
        /*         if (chan == 0) {
                     std::cout << std::endl;

@@ -408,51 +408,13 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
 		int sample_counter = 0;
 
         // loop through each channel in the electrode
-		for (int chan = 0; chan < electrode->numChannels; chan++)
-		{
-			int currentChannel = *(electrode->channels + chan);
-			std::vector<float> temp_values(window_size); //data in temp_value: [ch1,ch2,ch3,ch4,ch1,ch2,ch3,ch4...]
-            
-            // loop through the data on the buffer
-			while (samplesAvailable(nSamples))
-			{
-				sampleIndex++; //move forward one sample for getNextSample
+        if (curDetectionMethod == "Median") {
+            computeMedianThreshold(electrode, nSamples, sample_counter, dyn_thresholds, window_number);
+        }
+        else {
+            computeSimpleThreshold(electrode, dyn_thresholds);
+        }
 
-                //get the sample data and store it in a vector
-				temp_values[sample_counter] = abs(getNextSample(currentChannel)) / scalar; //getNextSample is getting sample at sampleIndex
-				if (sample_counter == window_size - 1) //when the temp_value buffer is full, update the threshold
-				{
-					// Compute Threshold using values in 'temp_values'
-					std::sort(temp_values.begin(), temp_values.end()); //sort
-					float factor = float(*(electrode->thresholds + chan)); //get the threshold factor
-
-                    //median of sorted value * factor
-					dyn_thresholds[chan][window_number] = factor * temp_values[floor((float)temp_values.size() / 2)];
-					window_number++;
-					sample_counter = 0;
-				}
-				else
-				{
-					sample_counter++;
-				}
-			}
-			// Check last window
-			if (sample_counter != 0)
-			{
-				// Remove empty elements from 'temp_values'
-				temp_values.erase(temp_values.begin() + sample_counter, temp_values.end());
-
-				// Compute Threshold using values in 'temp_values'
-				std::sort(temp_values.begin(), temp_values.end());
-				float Threshold = float(*(electrode->thresholds + chan));
-				dyn_thresholds[chan][window_number] = Threshold * temp_values[floor((float)temp_values.size() / 2)];
-			}
-
-			// Restart indexes from the beginning
-			sampleIndex = electrode->lastBufferIndex - 1;
-			window_number = 0;
-			sample_counter = 0;
-		}
 
         /////////////////////////////////////////////////
         // Do spike detection with the computed threshold
@@ -494,13 +456,9 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
 
                     bool isSpikeDetected;
 
-                    if (curDetectionMethod == "Median") {
-                        isSpikeDetected = abs(getNextSample(currentChannel)) > dyn_thresholds[chan][window_number];
-                    }
-                    else {
-                        isSpikeDetected = abs(getNextSample(currentChannel)) > float(*(electrode->thresholds + chan));
-                    }
-
+                    isSpikeDetected = abs(getNextSample(currentChannel)) > dyn_thresholds[chan][window_number];
+                    
+           
 					if (isSpikeDetected) // trigger spike
                     {
       //                  // When a peak is detected, keep going until the maximum point is detected
@@ -571,6 +529,68 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
         }
 
     } // end cycle through electrodes
+}
+
+void SpikeDetectorDynamic::computeMedianThreshold(SimpleElectrode* electrode, int nSamples, int& sample_counter, std::vector<std::vector<float>>& dyn_thresholds, int& window_number)
+{
+    for (int chan = 0; chan < electrode->numChannels; chan++)
+    {
+        int currentChannel = *(electrode->channels + chan);
+        std::vector<float> temp_values(window_size); //data in temp_value: [ch1,ch2,ch3,ch4,ch1,ch2,ch3,ch4...]
+
+                                                     // loop through the data on the buffer
+        while (samplesAvailable(nSamples))
+        {
+            sampleIndex++; //move forward one sample for getNextSample
+
+                           //get the sample data and store it in a vector
+            temp_values[sample_counter] = abs(getNextSample(currentChannel)) / scalar; //getNextSample is getting sample at sampleIndex
+            if (sample_counter == window_size - 1) //when the temp_value buffer is full, update the threshold
+            {
+                // Compute Threshold using values in 'temp_values'
+                std::sort(temp_values.begin(), temp_values.end()); //sort
+                float factor = float(*(electrode->thresholds + chan)); //get the threshold factor
+
+                                                                       //median of sorted value * factor
+                dyn_thresholds[chan][window_number] = factor * temp_values[floor((float)temp_values.size() / 2)];
+                window_number++;
+                sample_counter = 0;
+
+            }
+            else
+            {
+                sample_counter++;
+            }
+        }
+        // Check last window
+        if (sample_counter != 0)
+        {
+            // Remove empty elements from 'temp_values'
+            temp_values.erase(temp_values.begin() + sample_counter, temp_values.end());
+
+            // Compute Threshold using values in 'temp_values'
+            std::sort(temp_values.begin(), temp_values.end());
+            float Threshold = float(*(electrode->thresholds + chan));
+            dyn_thresholds[chan][window_number] = Threshold * temp_values[floor((float)temp_values.size() / 2)];
+        }
+
+        // Restart indexes from the beginning
+        sampleIndex = electrode->lastBufferIndex - 1;
+        window_number = 0;
+        sample_counter = 0;
+    }
+}
+
+void SpikeDetectorDynamic::computeSimpleThreshold(SimpleElectrode* electrode, std::vector<std::vector<float>>& dyn_thresholds)
+{
+    //set all channel to be the same
+
+    for (int chan = 0; chan < electrode->numChannels; chan++) {
+        for (int j = 0; j < dyn_thresholds[chan].size(); j++) {
+            dyn_thresholds[chan][j] = float(*(electrode->thresholds + chan));
+        }
+    }
+
 }
 
 void SpikeDetectorDynamic::AddSpikeEvent(int& peakIndex, SimpleElectrode* electrode, int& electrodeIdx)
