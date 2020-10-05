@@ -475,6 +475,8 @@ void SpikeDetectorDynamicEditor::labelTextChanged(Label* label)
 
 void SpikeDetectorDynamicEditor::comboBoxChanged(ComboBox* comboBox)
 {
+    SpikeDetectorDynamic* processor = (SpikeDetectorDynamic*)getProcessor();
+
     if (comboBox == electrodeList)
     {
         int ID = comboBox->getSelectedId();
@@ -487,12 +489,19 @@ void SpikeDetectorDynamicEditor::comboBoxChanged(ComboBox* comboBox)
         {
             lastId = ID;
 
-			SpikeDetectorDynamic* processor = (SpikeDetectorDynamic*)getProcessor();
             SimpleElectrode* e = processor->setCurrentElectrodeIndex(ID-1);
             electrodeEditorButtons[1]->setToggleState(e->isMonitored, dontSendNotification);
             drawElectrodeButtons(ID-1);
         }
     }
+    else if (comboBox == detectionMethod) {
+        // selecting which detection method to use
+        int index = comboBox->getSelectedId(); //0 means no selection
+        String method = comboBox->getItemText(index-1);
+        processor->setDetectionMethod(method);
+    }
+
+
     thresholdSlider->setActive(false);
 }
 

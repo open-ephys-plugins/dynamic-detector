@@ -21,7 +21,7 @@ SpikeDetectorDynamic::SpikeDetectorDynamic()
     detectionMethod.add("Median");
     detectionMethod.add("Simple");
 
-    curDetectionMethod = detectionMethod[0];
+    curDetectionMethod = "Median";
 
     //
 
@@ -333,7 +333,7 @@ int SpikeDetectorDynamic::getSpikePeakIndex(int index, SimpleElectrode* electrod
 
     int peakIndex = index;
     index++;
-    while (abs(getSampleFromBuffer(currentChannel,index)) < abs(getSampleFromBuffer(currentChannel, index)))
+    while (abs(getSampleFromBuffer(currentChannel,index)) < abs(getSampleFromBuffer(currentChannel, index+1)))
     {
         index++;		// Keep going until finding the largest point or peak
     }
@@ -362,7 +362,7 @@ int SpikeDetectorDynamic::getSpikePeakIndex(int index, SimpleElectrode* electrod
         }
     }
 
-    return peakIndex - (electrode->prePeakSamples - 1); //at the beginning of spike
+    return peakIndex;
 }
 
 
@@ -492,7 +492,16 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
                     // getNextSample is from the overflow buffer
                     // index of the overflow buffer is controlled by sampleIndex;
 
-					if (abs(getNextSample(currentChannel)) > dyn_thresholds[chan][window_number]) // trigger spike
+                    bool isSpikeDetected;
+
+                    if (curDetectionMethod == "Median") {
+                        isSpikeDetected = abs(getNextSample(currentChannel)) > dyn_thresholds[chan][window_number];
+                    }
+                    else {
+                        isSpikeDetected = abs(getNextSample(currentChannel)) > float(*(electrode->thresholds + chan));
+                    }
+
+					if (isSpikeDetected) // trigger spike
                     {
       //                  // When a peak is detected, keep going until the maximum point is detected
       //                  int peakIndex = sampleIndex;
