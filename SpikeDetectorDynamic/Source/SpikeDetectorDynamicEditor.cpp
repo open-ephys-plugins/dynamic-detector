@@ -339,7 +339,6 @@ void SpikeDetectorDynamicEditor::buttonEvent(Button* button)
 
         double threshold = double(thresholdTextBox->getTextValue().getValue());
 
-
         Array<double> thresholds;
 
         SpikeDetectorDynamic* processor = (SpikeDetectorDynamic*)getProcessor();

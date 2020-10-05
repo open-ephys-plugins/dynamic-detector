@@ -43,6 +43,8 @@ public:
         spikes into the event buffer. */
     void process(AudioSampleBuffer& buffer);
 
+    void AddSpikeEvent(int& peakIndex, SimpleElectrode* electrode, int& i);
+
     /** Used to alter parameters of data acquisition. */
     void setParameter(int parameterIndex, float newValue);
 
@@ -114,6 +116,10 @@ public:
     StringArray electrodeTypes;
     StringArray detectionMethod;
 
+    String curDetectionMethod;
+
+    void setDetectionMethod(String method);
+
     void setChannelThreshold(int electrodeNum, int channelNum, float threshold);
 
     double getChannelThreshold(int electrodeNum, int channelNum);
@@ -121,11 +127,14 @@ public:
     void saveCustomParametersToXml(XmlElement* parentElement);
     void loadCustomParametersFromXml();
 
+    float getSampleFromBuffer(int& chan, int index);
+
 private:
     /** Pointer to a continuous buffer. */
     AudioSampleBuffer* dataBuffer;
 
     float getDefaultThreshold();
+
 
     int overflowBufferSize;
 
@@ -151,12 +160,14 @@ private:
 
     void handleEvent(int eventType, MidiMessage& event, int sampleNum);
 
-    void addSpikeEvent(SpikeEvent* s, MidiBuffer& eventBuffer, int peakIndex);
+    //void addSpikeEvent(SpikeEvent* s, MidiBuffer& eventBuffer, int peakIndex);
   
     void addWaveformToSpikeObject (SpikeEvent::SpikeBuffer& s,
                                               int& peakIndex,
                                               int& electrodeNumber,
                                               int& currentChannel);
+
+    int getSpikePeakIndex(int index, SimpleElectrode* electrode);
 
     void resetElectrode(SimpleElectrode*);
     

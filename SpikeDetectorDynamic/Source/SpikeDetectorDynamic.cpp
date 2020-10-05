@@ -21,6 +21,8 @@ SpikeDetectorDynamic::SpikeDetectorDynamic()
     detectionMethod.add("Median");
     detectionMethod.add("Simple");
 
+    curDetectionMethod = detectionMethod[0];
+
     //
 
     for (int i = 0; i < electrodeTypes.size()+1; i++)
@@ -224,6 +226,20 @@ bool SpikeDetectorDynamic::isChannelActive(int electrodeIndex, int i)
 }
 
 
+void SpikeDetectorDynamic::setDetectionMethod(String method)
+{
+    for (int i = 0; i < detectionMethod.size(); i++) {
+        if (method == detectionMethod[i]) {
+            curDetectionMethod = detectionMethod[i];
+            std::cout << "Setting detection  method to " << method << std::endl;
+            return;
+        }
+    }
+
+    std::cout << "Error: " << method << " not supported" << std::endl;
+    
+}
+
 void SpikeDetectorDynamic::setChannelThreshold(int electrodeNum, int channelNum, float thresh)
 {
     currentElectrode = electrodeNum;
@@ -311,6 +327,44 @@ void SpikeDetectorDynamic::addWaveformToSpikeObject (SpikeEvent::SpikeBuffer& s,
     sampleIndex -= spikeLength; // reset sample index
 }
 
+int SpikeDetectorDynamic::getSpikePeakIndex(int index, SimpleElectrode* electrode)
+{
+    //find the peak index of of the threshold crossing point 
+
+    int peakIndex = index;
+    index++;
+    while (abs(getSampleFromBuffer(currentChannel,index)) < abs(getSampleFromBuffer(currentChannel, index)))
+    {
+        index++;		// Keep going until finding the largest point or peak
+    }
+    peakIndex = index - 1;
+    float peak_amp = getSampleFromBuffer(currentChannel, index);
+
+    // check that there are no other peaks happening within num_samples (prePeakSamples + postPeakSamples)
+    // if there is another peak detected, replace the peak with the larger one
+
+    int num_samples = electrode->prePeakSamples + electrode->postPeakSamples;
+    int current_test_sample = 1;
+    while (current_test_sample < num_samples)
+    {
+        if (peak_amp > getSampleFromBuffer(currentChannel, index+1))
+        {
+            current_test_sample++;
+            index++;
+        }
+        else
+        {
+            // found another large peak, replace
+            peakIndex = index;
+            peak_amp = abs(getCurrentSample(currentChannel));
+                index++;
+            current_test_sample = 1;
+        }
+    }
+
+    return peakIndex - (electrode->prePeakSamples - 1); //at the beginning of spike
+}
+
 
 // void SpikeDetectorDynamic::handleEvent(int eventType, MidiMessage& event, int sampleNum)
 // {
@@ -342,8 +396,10 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
         // Compute dynamic thresholds
 
         // each sub-window will have its own threhsold for detection
+        // the input buffer will be divided into multiple windows defined by the window_size
+
 		const int number_of_windows = (int)ceil((float)((nSamples + (overflowBufferSize / 2))) / window_size);
-		std::vector<std::vector<float> > dyn_thresholds; //vector of vector of thresholds
+		std::vector<std::vector<float> > dyn_thresholds; //vector of vector of thresholds: channel x windows
 		dyn_thresholds.resize(electrode->numChannels);
 		for (int i = 0; i < electrode->numChannels; ++i)
 			dyn_thresholds[i].resize(number_of_windows);
@@ -411,6 +467,9 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
 
 			if (sample_counter == window_size - 1)
 			{
+                //if sample within  the window is filled up
+                // move to the next window
+
 				window_number++;
 				sample_counter = 0;
 			}
@@ -418,93 +477,57 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
 			{
 				sample_counter++;
 			}
-            // cycle through channels
+
+            // cycle through channels in the electrode
+            // Search each time point of all the channels one by one (i.e. Chan1 t0, chan2 t0, chan3 t0 etc..)
+            // if a spike is detected, then search for the maximum point within pre-and post- spike sample
+            // then move the overflowBufferindex forward
+
             for (int chan = 0; chan < electrode->numChannels; chan++)
             {
                 if (*(electrode->isActive+chan))
                 {
                     int currentChannel = *(electrode->channels+chan);
 
+                    // getNextSample is from the overflow buffer
+                    // index of the overflow buffer is controlled by sampleIndex;
+
 					if (abs(getNextSample(currentChannel)) > dyn_thresholds[chan][window_number]) // trigger spike
                     {
-                        // When a peak is detected, keep going until the maximum point is detected
-                        int peakIndex = sampleIndex;
-						sampleIndex++;
-						while (abs(getCurrentSample(currentChannel)) < abs(getNextSample(currentChannel)))
-						{
-							sampleIndex++;		// Keep going until finding the largest point or peak
-						}
-						peakIndex = sampleIndex - 1;
-						float peak_amp = abs(getCurrentSample(currentChannel));
+      //                  // When a peak is detected, keep going until the maximum point is detected
+      //                  int peakIndex = sampleIndex;
+						//sampleIndex++;
+						//while (abs(getCurrentSample(currentChannel)) < abs(getNextSample(currentChannel)))
+						//{
+						//	sampleIndex++;		// Keep going until finding the largest point or peak
+						//}
+						//peakIndex = sampleIndex - 1;
+						//float peak_amp = abs(getCurrentSample(currentChannel));
 
-						// check that there are no other peaks happening within num_samples (prePeakSamples + postPeakSamples)
-                        // if there is another peak detected, replace the peak with the larger one
+						//// check that there are no other peaks happening within num_samples (prePeakSamples + postPeakSamples)
+      //                  // if there is another peak detected, replace the peak with the larger one
 
-						int num_samples = electrode->prePeakSamples + electrode->postPeakSamples;
-						int current_test_sample = 1;
-						while (current_test_sample < num_samples)
-						{
-							if (peak_amp > abs(getNextSample(currentChannel)))
-							{
-								current_test_sample++;
-								sampleIndex++;
-							}
-							else
-							{
-								peakIndex = sampleIndex;
-								peak_amp = abs(getCurrentSample(currentChannel));
-								sampleIndex++;
-								current_test_sample = 1;
-							}
-						}
+						//int num_samples = electrode->prePeakSamples + electrode->postPeakSamples;
+						//int current_test_sample = 1;
+						//while (current_test_sample < num_samples)
+						//{
+						//	if (peak_amp > abs(getNextSample(currentChannel)))
+						//	{
+						//		current_test_sample++;
+						//		sampleIndex++;
+						//	}
+						//	else
+						//	{
+						//		peakIndex = sampleIndex;
+						//		peak_amp = abs(getCurrentSample(currentChannel));
+						//		sampleIndex++;
+						//		current_test_sample = 1;
+						//	}
+						//}
 
-						sampleIndex = peakIndex - (electrode->prePeakSamples - 1); //at the beginning of spike
-                         
-                        const SpikeChannel* spikeChan = getSpikeChannel(i);
-                        SpikeEvent::SpikeBuffer spikeData(spikeChan);
-                        Array<float> thresholds;
+                        int peakIndex = getSpikePeakIndex(sampleIndex, electrode);
 
-                        //Copy spike data to spike buffer, all channels from the electrode will be copied
-                        for (int channel = 0; channel < electrode->numChannels; ++channel)
-						{
-							addWaveformToSpikeObject(spikeData,
-								peakIndex,
-								i, //electrode no.
-								channel);
-							thresholds.add((int)*(electrode->thresholds + channel)); //pointer arithmetics
-						}
-                        int64 timestamp = getTimestamp(electrode->channels[0]) + peakIndex; //getTimestamp is at the start of the buffer
-                        //create spike event
-						SpikeEventPtr newSpike = SpikeEvent::createSpikeEvent(spikeChan, timestamp, thresholds, spikeData, 0);
-
-                        // // package spikes;
-                        // // add to event buffer
-						addSpike(spikeChan, newSpike, peakIndex);
-
-                        // // SpikeObject newSpike;
-                        // // newSpike.timestamp = 0; //getTimestamp(currentChannel) + peakIndex;
-                        // // newSpike.timestamp_software = -1;
-                        // // newSpike.source = i;
-                        // // newSpike.nChannels = electrode->numChannels;
-                        // // newSpike.sortedId = 0;
-                        // // newSpike.electrodeID = electrode->electrodeID;
-                        // // newSpike.channel = 0;
-                        // // newSpike.samplingFrequencyHz = sampleRateForElectrode;
-
-                        // currentIndex = 0;
-
-                        // for (int channel = 0; channel < electrode->numChannels; channel++)
-                        // {
-						// 	addWaveformToSpikeObject(&newSpike, peakIndex, i, channel, int(floor(dyn_thresholds[chan][window_number])));
-                        // }
-                        
-                        // int64 timestamp = getTimestamp(electrode->channels[0]) + peakIndex;
-                        // //create spike event
-						// SpikeEventPtr newSpike = SpikeEvent::createSpikeEvent(spikeChan, timestamp, thresholds, spikeData, 0);
-
-                        // // package spikes;
-                        // // add to event buffer
-						// addSpike(spikeChan, newSpike, peakIndex);
+                        AddSpikeEvent(peakIndex, electrode, i);
 
                         // advance the sample index
                         sampleIndex = peakIndex + electrode->postPeakSamples;
@@ -520,11 +543,16 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
 
         electrode->lastBufferIndex = sampleIndex - nSamples; // should be negative
 
+        // Store the last section of data into the overflowbuffer
+        // so that in next callback, the data is continuous
         if (nSamples > overflowBufferSize)
         {
             for (int j = 0; j < electrode->numChannels; j++)
             {
-				overflowBuffer.copyFrom(*electrode->channels+j, 0,buffer, *electrode->channels+j,nSamples-overflowBufferSize,overflowBufferSize);
+				overflowBuffer.copyFrom(*electrode->channels+j, 0,
+                    buffer, *electrode->channels+j,
+                    nSamples-overflowBufferSize,
+                    overflowBufferSize);
             }
             useOverflowBuffer.set(i, true);
         }
@@ -534,6 +562,32 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
         }
 
     } // end cycle through electrodes
+}
+
+void SpikeDetectorDynamic::AddSpikeEvent(int& peakIndex, SimpleElectrode* electrode, int& electrodeIdx)
+{
+    sampleIndex = peakIndex - (electrode->prePeakSamples - 1); //at the beginning of spike
+
+    const SpikeChannel* spikeChan = getSpikeChannel(electrodeIdx);
+    SpikeEvent::SpikeBuffer spikeData(spikeChan);
+    Array<float> thresholds;
+
+    //Copy spike data to spike buffer, all channels from the electrode will be copied
+    for (int channel = 0; channel < electrode->numChannels; ++channel)
+    {
+        addWaveformToSpikeObject(spikeData,
+            peakIndex,
+            electrodeIdx, //electrode no.
+            channel);
+        thresholds.add((int)*(electrode->thresholds + channel)); //pointer arithmetics
+    }
+    int64 timestamp = getTimestamp(electrode->channels[0]) + peakIndex; //getTimestamp is at the start of the buffer
+                                                                        //create spike event
+    SpikeEventPtr newSpike = SpikeEvent::createSpikeEvent(spikeChan, timestamp, thresholds, spikeData, 0);
+
+    // // package spikes;
+    // // add to event buffer
+    addSpike(spikeChan, newSpike, peakIndex);
 }
 
 
@@ -623,6 +677,19 @@ void SpikeDetectorDynamic::saveCustomParametersToXml(XmlElement* parentElement)
             channelNode->setAttribute("thresh",*(electrodes[i]->thresholds+j));
             channelNode->setAttribute("isActive",*(electrodes[i]->isActive+j));
         }
+    }
+}
+
+float SpikeDetectorDynamic::getSampleFromBuffer(int& chan, int index)
+{
+    if (index < 1)
+    {
+        // if negative, count from the end
+        return *overflowBuffer.getWritePointer(chan, overflowBufferSize + index - 1);
+    }
+    else
+    {
+        return *dataBuffer->getWritePointer(chan, index - 1);
     }
 }
 
