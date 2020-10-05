@@ -3528,6 +3528,9 @@ void LfpChannelDisplay::pxPaint()
                         // Assume the spikes are sorted in ascending order of their timestamp
                         idx2delete = spikeIdx;
                     }
+                    else {
+                        break;
+                    }
             
                 }
 
@@ -3585,6 +3588,7 @@ void LfpChannelDisplay::pxPaint()
                     if (abs(curTimestamp -spikeTimestamp) < ratio) {
                         //std::cout << "Spike hit at " << (startTimeStamp + i*ratio) << std::endl;
                         spikeFlag = true;
+                        break;
 
                     }
 
