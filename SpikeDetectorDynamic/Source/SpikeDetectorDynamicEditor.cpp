@@ -111,7 +111,7 @@ SpikeDetectorDynamicEditor::SpikeDetectorDynamicEditor(GenericProcessor* parentN
     detectionMethod->setSelectedId(1);
     addAndMakeVisible(detectionMethod);
 
-    thresholdTextBox = new Label("thresholdText", "3");
+    thresholdTextBox = new Label("thresholdText", "6");
     thresholdTextBox->setEditable(true);
     thresholdTextBox->setColour(Label::textColourId, Colours::white);
     thresholdTextBox->setColour(Label::backgroundColourId, Colours::grey);
