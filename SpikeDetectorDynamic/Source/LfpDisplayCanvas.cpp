@@ -3589,7 +3589,7 @@ void LfpChannelDisplay::pxPaint()
                         //std::cout << "Spike hit at " << (startTimeStamp + i*ratio) << std::endl;
                         // TODO: remove repeated check by multiple channel on the same spike
                         spikeFlag = true;
-                        idx2delete = spikeIdx;
+                        //idx2delete = spikeIdx;
                         break;
 
                     }
