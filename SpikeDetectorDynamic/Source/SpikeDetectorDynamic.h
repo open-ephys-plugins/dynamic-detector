@@ -133,6 +133,8 @@ public:
 
     float getSampleFromBuffer(int& chan, int index);
 
+    void setEnableDetection(bool isEnable);
+
 private:
     /** Pointer to a continuous buffer. */
     AudioSampleBuffer* dataBuffer;
@@ -178,6 +180,8 @@ private:
     uint16_t sampleRateForElectrode;
 	int window_size; //window used to calculate the threshold
 	float scalar = 0.6745f;
+
+    bool isEnableDetection = false; //whether detection is enabled
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpikeDetectorDynamic);
 };

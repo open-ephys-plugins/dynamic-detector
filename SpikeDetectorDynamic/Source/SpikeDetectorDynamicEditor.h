@@ -34,10 +34,12 @@ public:
     void checkSettings();
     void refreshElectrodeList();
 
+
 private:
 
     void drawElectrodeButtons(int);
 
+    // TODO: use managed ptr to avoid memory leak
     ComboBox* electrodeTypes;
     ComboBox* electrodeList;
     Label* numElectrodes;
@@ -45,6 +47,7 @@ private:
     TriangleButton* upButton;
     TriangleButton* downButton;
     UtilityButton* plusButton;
+    ToggleButton* enableBtn;
 
     ThresholdSlider* thresholdSlider;
 

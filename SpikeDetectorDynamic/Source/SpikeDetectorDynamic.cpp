@@ -382,153 +382,126 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
     dataBuffer = &buffer;
     // checkForEvents(events); // need to find any timestamp events before extracting spikes
 
-    for (int i = 0; i < electrodes.size(); i++)
-    {
-        electrode = electrodes[i];
-
-        // refresh buffer index for this electrode
-        sampleIndex = electrode->lastBufferIndex - 1; // subtract 1 to account for
-        // increment at start of getNextSample()
-
-        int nSamples = getNumSamples(*electrode->channels);
-
-		/////////////////////////////////////////
-        // Compute dynamic thresholds
-
-        // each sub-window will have its own threhsold for detection
-        // the input buffer will be divided into multiple windows defined by the window_size
-
-		const int number_of_windows = (int)ceil((float)((nSamples + (overflowBufferSize / 2))) / window_size);
-		std::vector<std::vector<float> > dyn_thresholds; //vector of vector of thresholds: channel x windows
-		dyn_thresholds.resize(electrode->numChannels);
-		for (int i = 0; i < electrode->numChannels; ++i)
-			dyn_thresholds[i].resize(number_of_windows);
-
-		int window_number = 0;
-		int sample_counter = 0;
-
-        // loop through each channel in the electrode
-        if (curDetectionMethod == "Median") {
-            computeMedianThreshold(electrode, nSamples, sample_counter, dyn_thresholds, window_number);
-        }
-        else {
-            computeSimpleThreshold(electrode, dyn_thresholds);
-        }
-
-
-        /////////////////////////////////////////////////
-        // Do spike detection with the computed threshold
-
-        // cycle through samples
-        while (samplesAvailable(nSamples))
+    if(isEnableDetection){
+        for (int i = 0; i < electrodes.size(); i++)
         {
-            sampleIndex++;
-			
-            // Check in which window is the sample located
-            // The sample buffer is divided into multiple windows, each window has its own detection threshold
+            electrode = electrodes[i];
 
-			if (sample_counter == window_size - 1)
-			{
-                //if sample within  the window is filled up
-                // move to the next window
+            // refresh buffer index for this electrode
+            sampleIndex = electrode->lastBufferIndex - 1; // subtract 1 to account for
+            // increment at start of getNextSample()
 
-				window_number++;
-				sample_counter = 0;
-			}
-			else
-			{
-				sample_counter++;
-			}
+            int nSamples = getNumSamples(*electrode->channels);
 
-            // cycle through channels in the electrode
-            // Search each time point of all the channels one by one (i.e. Chan1 t0, chan2 t0, chan3 t0 etc..)
-            // if a spike is detected, then search for the maximum point within pre-and post- spike sample
-            // then move the overflowBufferindex forward
+            /////////////////////////////////////////
+            // Compute dynamic thresholds
 
-            for (int chan = 0; chan < electrode->numChannels; chan++)
-            {
-                if (*(electrode->isActive+chan))
-                {
-                    int currentChannel = *(electrode->channels+chan);
+            // each sub-window will have its own threhsold for detection
+            // the input buffer will be divided into multiple windows defined by the window_size
 
-                    // getNextSample is from the overflow buffer
-                    // index of the overflow buffer is controlled by sampleIndex;
+            const int number_of_windows = (int)ceil((float)((nSamples + (overflowBufferSize / 2))) / window_size);
+            std::vector<std::vector<float> > dyn_thresholds; //vector of vector of thresholds: channel x windows
+            dyn_thresholds.resize(electrode->numChannels);
+            for (int i = 0; i < electrode->numChannels; ++i)
+                dyn_thresholds[i].resize(number_of_windows);
 
-                    bool isSpikeDetected;
+            int window_number = 0;
+            int sample_counter = 0;
 
-                    isSpikeDetected = abs(getNextSample(currentChannel)) > dyn_thresholds[chan][window_number];
-                    
-           
-					if (isSpikeDetected) // trigger spike
-                    {
-      //                  // When a peak is detected, keep going until the maximum point is detected
-      //                  int peakIndex = sampleIndex;
-						//sampleIndex++;
-						//while (abs(getCurrentSample(currentChannel)) < abs(getNextSample(currentChannel)))
-						//{
-						//	sampleIndex++;		// Keep going until finding the largest point or peak
-						//}
-						//peakIndex = sampleIndex - 1;
-						//float peak_amp = abs(getCurrentSample(currentChannel));
-
-						//// check that there are no other peaks happening within num_samples (prePeakSamples + postPeakSamples)
-      //                  // if there is another peak detected, replace the peak with the larger one
-
-						//int num_samples = electrode->prePeakSamples + electrode->postPeakSamples;
-						//int current_test_sample = 1;
-						//while (current_test_sample < num_samples)
-						//{
-						//	if (peak_amp > abs(getNextSample(currentChannel)))
-						//	{
-						//		current_test_sample++;
-						//		sampleIndex++;
-						//	}
-						//	else
-						//	{
-						//		peakIndex = sampleIndex;
-						//		peak_amp = abs(getCurrentSample(currentChannel));
-						//		sampleIndex++;
-						//		current_test_sample = 1;
-						//	}
-						//}
-
-                        int peakIndex = getSpikePeakIndex(sampleIndex, electrode);
-
-                        AddSpikeEvent(peakIndex, electrode, i);
-
-                        // advance the sample index
-                        sampleIndex = peakIndex + electrode->postPeakSamples;
-
-                        // quit spike "for" loop, break the for loop searching through different channels, so that the same peak in a electrode won't be detected twice
-                        break;
-                    } // end spike trigger
-
-                } // end if channel is active
-            } // end cycle through channels on electrode
-
-        } // end cycle through samples
-
-        electrode->lastBufferIndex = sampleIndex - nSamples; // should be negative
-
-        // Store the last section of data into the overflowbuffer
-        // so that in next callback, the data is continuous
-        if (nSamples > overflowBufferSize)
-        {
-            for (int j = 0; j < electrode->numChannels; j++)
-            {
-				overflowBuffer.copyFrom(*electrode->channels+j, 0,
-                    buffer, *electrode->channels+j,
-                    nSamples-overflowBufferSize,
-                    overflowBufferSize);
+            // loop through each channel in the electrode
+            if (curDetectionMethod == "Median") {
+                computeMedianThreshold(electrode, nSamples, sample_counter, dyn_thresholds, window_number);
             }
-            useOverflowBuffer.set(i, true);
-        }
-        else
-        {
-            useOverflowBuffer.set(i, false);
-        }
+            else {
+                computeSimpleThreshold(electrode, dyn_thresholds);
+            }
 
-    } // end cycle through electrodes
+
+            /////////////////////////////////////////////////
+            // Do spike detection with the computed threshold
+
+            // cycle through samples
+            while (samplesAvailable(nSamples))
+            {
+                sampleIndex++;
+
+                // Check in which window is the sample located
+                // The sample buffer is divided into multiple windows, each window has its own detection threshold
+
+                if (sample_counter == window_size - 1)
+                {
+                    //if sample within  the window is filled up
+                    // move to the next window
+
+                    window_number++;
+                    sample_counter = 0;
+                }
+                else
+                {
+                    sample_counter++;
+                }
+
+                // cycle through channels in the electrode
+                // Search each time point of all the channels one by one (i.e. Chan1 t0, chan2 t0, chan3 t0 etc..)
+                // if a spike is detected, then search for the maximum point within pre-and post- spike sample
+                // then move the overflowBufferindex forward
+
+                for (int chan = 0; chan < electrode->numChannels; chan++)
+                {
+                    if (*(electrode->isActive + chan))
+                    {
+                        int currentChannel = *(electrode->channels + chan);
+
+                        // getNextSample is from the overflow buffer
+                        // index of the overflow buffer is controlled by sampleIndex;
+
+                        bool isSpikeDetected;
+
+                        isSpikeDetected = abs(getNextSample(currentChannel)) > dyn_thresholds[chan][window_number];
+
+
+                        if (isSpikeDetected) // trigger spike
+                        {
+
+                            int peakIndex = getSpikePeakIndex(sampleIndex, electrode);
+
+                            AddSpikeEvent(peakIndex, electrode, i);
+
+                            // advance the sample index
+                            sampleIndex = peakIndex + electrode->postPeakSamples;
+
+                            // quit spike "for" loop, break the for loop searching through different channels, so that the same peak in a electrode won't be detected twice
+                            break;
+                        } // end spike trigger
+
+                    } // end if channel is active
+                } // end cycle through channels on electrode
+
+            } // end cycle through samples
+
+            electrode->lastBufferIndex = sampleIndex - nSamples; // should be negative
+
+            // Store the last section of data into the overflowbuffer
+            // so that in next callback, the data is continuous
+            if (nSamples > overflowBufferSize)
+            {
+                for (int j = 0; j < electrode->numChannels; j++)
+                {
+                    overflowBuffer.copyFrom(*electrode->channels + j, 0,
+                        buffer, *electrode->channels + j,
+                        nSamples - overflowBufferSize,
+                        overflowBufferSize);
+                }
+                useOverflowBuffer.set(i, true);
+            }
+            else
+            {
+                useOverflowBuffer.set(i, false);
+            }
+
+        } // end cycle through electrodes
+    }
+    
 }
 
 void SpikeDetectorDynamic::computeMedianThreshold(SimpleElectrode* electrode, int nSamples, int& sample_counter, std::vector<std::vector<float>>& dyn_thresholds, int& window_number)
@@ -720,6 +693,11 @@ float SpikeDetectorDynamic::getSampleFromBuffer(int& chan, int index)
     {
         return *dataBuffer->getWritePointer(chan, index - 1);
     }
+}
+
+void SpikeDetectorDynamic::setEnableDetection(bool isEnable)
+{
+    isEnableDetection = isEnable;
 }
 
 void SpikeDetectorDynamic::loadCustomParametersFromXml()

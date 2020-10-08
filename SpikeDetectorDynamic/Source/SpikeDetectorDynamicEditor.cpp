@@ -123,6 +123,13 @@ SpikeDetectorDynamicEditor::SpikeDetectorDynamicEditor(GenericProcessor* parentN
     setAllThresholdBtn->addListener(this);
     addAndMakeVisible(setAllThresholdBtn);
 
+    enableBtn = new ToggleButton("Enable");
+    enableBtn->setBounds(285, 95, 75, 20);
+    enableBtn->addListener(this);
+    addAndMakeVisible(enableBtn);
+
+
+
     channelSelector->inactivateButtons();
     channelSelector->paramButtonsToggledByDefault(false);
 }
@@ -357,6 +364,12 @@ void SpikeDetectorDynamicEditor::buttonEvent(Button* button)
         thresholdSlider->setValues(thresholds);
         thresholdSlider->repaint(); //force refresh display
 
+    }
+    else if (button == enableBtn) { //enabled detection
+
+        bool isEnableDetection = enableBtn->getToggleState();
+        SpikeDetectorDynamic* processor = (SpikeDetectorDynamic*)getProcessor();
+        processor->setEnableDetection(isEnableDetection);
     }
 }
 
