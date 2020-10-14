@@ -337,7 +337,7 @@ int SpikeDetectorDynamic::getSpikePeakIndex(int index, SimpleElectrode* electrod
     {
         index++;		// Keep going until finding the largest point or peak
     }
-    peakIndex = index - 1;
+    peakIndex = index;
     float peak_amp = getSampleFromBuffer(currentChannel, index);
 
     // check that there are no other peaks happening within num_samples (prePeakSamples + postPeakSamples)
@@ -357,7 +357,7 @@ int SpikeDetectorDynamic::getSpikePeakIndex(int index, SimpleElectrode* electrod
             // found another large peak, replace
             peakIndex = index;
             peak_amp = abs(getCurrentSample(currentChannel));
-                index++;
+            index++;
             current_test_sample = 1;
         }
     }
@@ -365,15 +365,6 @@ int SpikeDetectorDynamic::getSpikePeakIndex(int index, SimpleElectrode* electrod
     return peakIndex;
 }
 
-
-// void SpikeDetectorDynamic::handleEvent(int eventType, MidiMessage& event, int sampleNum)
-// {
-//     if (eventType == TIMESTAMP)
-//     {
-//         const uint8* dataptr = event.getRawData();
-//         memcpy(&timestamp, dataptr + 4, 8); // remember to skip first four bytes
-//     }
-// }
 
 void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
 {
@@ -408,7 +399,6 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
             int window_number = 0;
             int sample_counter = 0;
 
-            // loop through each channel in the electrode
             if (curDetectionMethod == "Median") {
                 computeMedianThreshold(electrode, nSamples, sample_counter, dyn_thresholds, window_number);
             }
@@ -479,6 +469,7 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
 
             } // end cycle through samples
 
+            // used to keep track of the data in the overflow buffer
             electrode->lastBufferIndex = sampleIndex - nSamples; // should be negative
 
             // Store the last section of data into the overflowbuffer
@@ -583,7 +574,7 @@ void SpikeDetectorDynamic::AddSpikeEvent(int& peakIndex, SimpleElectrode* electr
             channel);
         thresholds.add((int)*(electrode->thresholds + channel)); //pointer arithmetics
     }
-    int64 timestamp = getTimestamp(electrode->channels[0]) + peakIndex; //getTimestamp is at the start of the buffer
+    int64 timestamp = getTimestamp(electrode->channels[0]) + peakIndex + 1; //getTimestamp is at the start of the buffer
                                                                         //create spike event
     SpikeEventPtr newSpike = SpikeEvent::createSpikeEvent(spikeChan, timestamp, thresholds, spikeData, 0);
 
