@@ -55,6 +55,7 @@ private:
     Array<ElectrodeEditorButton*> electrodeEditorButtons;
 
     ComboBox* detectionMethod;
+    ComboBox* detectionSign;
     Label* detectionMethodLabel;
     Label* thresholdTextBox;
     TextButton* setAllThresholdBtn; //button to set all threshold

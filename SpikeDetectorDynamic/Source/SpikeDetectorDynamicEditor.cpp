@@ -13,7 +13,7 @@ SpikeDetectorDynamicEditor::SpikeDetectorDynamicEditor(GenericProcessor* parentN
     Typeface::Ptr typeface = new CustomTypeface(mis);
     font = Font(typeface);
 
-    desiredWidth = 380;
+    desiredWidth = 440;
 
     electrodeTypes = new ComboBox("Electrode Types");
 
@@ -96,11 +96,12 @@ SpikeDetectorDynamicEditor::SpikeDetectorDynamicEditor(GenericProcessor* parentN
     thresholdLabel->setColour(Label::textColourId, Colours::grey);
     addAndMakeVisible(thresholdLabel);
 
+    // method of detection
     detectionMethod = new ComboBox("Detection method");
     detectionMethod->setJustificationType(Justification::centredLeft);
     detectionMethod->addListener(this);
     detectionMethod->setBounds(285, 35, 75, 20);
-   
+
 
     for (int i = 0; i < processor->detectionMethod.size(); i++)
     {
@@ -108,8 +109,25 @@ SpikeDetectorDynamicEditor::SpikeDetectorDynamicEditor(GenericProcessor* parentN
         detectionMethod->addItem(method, i+1);
     }
 
-    detectionMethod->setSelectedId(1);
+    detectionMethod->setSelectedId(2);
     addAndMakeVisible(detectionMethod);
+
+
+    // detection sign
+
+    detectionSign = new ComboBox("Detection sign");
+    detectionSign->setJustificationType(Justification::centredLeft);
+    detectionSign->addListener(this);
+    for (int i = 0; i < processor->detectionSign.size(); i++)
+    {
+        String dSign = processor->detectionSign[i];
+        detectionSign->addItem(dSign, i + 1);
+    }
+    detectionSign->setBounds(370, 35, 50, 20);
+    detectionSign->setSelectedId(2);
+    addAndMakeVisible(detectionSign);
+
+
 
     thresholdTextBox = new Label("thresholdText", "6");
     thresholdTextBox->setEditable(true);
@@ -512,6 +530,11 @@ void SpikeDetectorDynamicEditor::comboBoxChanged(ComboBox* comboBox)
         int index = comboBox->getSelectedId(); //0 means no selection
         String method = comboBox->getItemText(index-1);
         processor->setDetectionMethod(method);
+    }
+    else if (comboBox == detectionSign) {
+        int index = comboBox->getSelectedId();
+        String dSign = comboBox->getItemText(index - 1);
+        processor->setDetectionSign(dSign);
     }
 
 

@@ -118,11 +118,14 @@ public:
 
     /** Returns a list of possible electrode types (e.g., stereotrode, tetrode). */
     StringArray electrodeTypes;
-    StringArray detectionMethod;
+    StringArray detectionMethod; //method of detection
+    StringArray detectionSign; //direction of detection
 
     String curDetectionMethod;
+    String curDetectionSign;
 
     void setDetectionMethod(String method);
+    void setDetectionSign(String dSign);
 
     void setChannelThreshold(int electrodeNum, int channelNum, float threshold);
 
@@ -171,9 +174,10 @@ private:
     void addWaveformToSpikeObject (SpikeEvent::SpikeBuffer& s,
                                               int& peakIndex,
                                               int& electrodeNumber,
-                                              int& currentChannel);
+                                              int& currentChannel,
+                                              int64& timestamp);
 
-    int getSpikePeakIndex(int index, SimpleElectrode* electrode);
+    int getSpikePeakIndex(int index, int curChannel, SimpleElectrode* electrode);
 
     void resetElectrode(SimpleElectrode*);
     
@@ -182,6 +186,9 @@ private:
 	float scalar = 0.6745f;
 
     bool isEnableDetection = false; //whether detection is enabled
+
+
+    bool detectSpike(float sample, float threshold, String dSign);
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SpikeDetectorDynamic);
 };

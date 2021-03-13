@@ -24,14 +24,6 @@ SpikeDetectorDynamic::SpikeDetectorDynamic()
 
     curDetectionMethod = "Median";
 
-    //detectoin sign
-    detectionSign.add("+ve");
-    detectionSign.add("-ve");
-    detectionSign.add("Both");
-    curDetectionSign = "-ve";
-
-
-
     //
 
     for (int i = 0; i < electrodeTypes.size()+1; i++)
@@ -160,21 +152,6 @@ void SpikeDetectorDynamic::resetElectrode(SimpleElectrode* e)
     e->lastBufferIndex = 0;
 }
 
-bool SpikeDetectorDynamic::detectSpike(float sample, float threshold, String dSign)
-{
-    // check if a spike is detected
-    if (dSign == "-ve") {
-        return sample < -threshold;
-    }
-    else if (dSign == "+ve") {
-        return sample > threshold;
-    }
-    else {
-        return abs(sample) > threshold;
-    }
-    return false;
-}
-
 bool SpikeDetectorDynamic::removeElectrode(int index)
 {
     if (index > electrodes.size() || index < 0)
@@ -264,19 +241,6 @@ void SpikeDetectorDynamic::setDetectionMethod(String method)
     
 }
 
-void SpikeDetectorDynamic::setDetectionSign(String dSign)
-{
-    for (int i = 0; i < detectionSign.size(); i++) {
-        if (dSign == detectionSign[i]) {
-            curDetectionSign = detectionSign[i];
-            std::cout << "Setting detection  sign to " << dSign << std::endl;
-            return;
-        }
-    }
-
-    std::cout << "Error: " << dSign << " not supported" << std::endl;
-}
-
 void SpikeDetectorDynamic::setChannelThreshold(int electrodeNum, int channelNum, float thresh)
 {
     currentElectrode = electrodeNum;
@@ -329,29 +293,25 @@ bool SpikeDetectorDynamic::disable()
 void SpikeDetectorDynamic::addWaveformToSpikeObject (SpikeEvent::SpikeBuffer& s,
                                               int& peakIndex,
                                               int& electrodeNumber,
-                                              int& currentChannel,
-                                              int64& timestamp)
+                                              int& currentChannel)
 {
     int spikeLength = electrodes[electrodeNumber]->prePeakSamples
                       + electrodes[electrodeNumber]->postPeakSamples;
 
-
+    std::cout << "Writing spike waveform file" << std::endl;
     
     const int chan = *(electrodes[electrodeNumber]->channels + currentChannel);
+    String fn = String("spike_waveform_") + String(peakIndex) + String("_") + String(electrodeNumber) + String("_") + String(currentChannel);
+    File resourceFile = File::getCurrentWorkingDirectory().getChildFile(fn);
 
-    //std::cout << "Writing spike waveform file" << std::endl;
-    //String fn = String("spike_waveform_") + String(timestamp) +String("_") + String(peakIndex) +
-    //       String("_") + String(electrodeNumber) + String("_") + String(currentChannel) + String(".txt");
-    //File resourceFile = File::getCurrentWorkingDirectory().getChildFile(fn);
-
-    //std::cout << resourceFile.getFullPathName() << std::endl;
+    std::cout << resourceFile.getFullPathName() << std::endl;
     
-    //FileOutputStream output(resourceFile);
-    //output.setNewLineString("\n");
+    FileOutputStream output(resourceFile);
+    output.setNewLineString("\n");
 
-    //if (!output.openedOk()) {
-    //    DBG("FileOutputStream didn't open correctly.");
-    //}
+    if (!output.openedOk()) {
+        DBG("FileOutputStream didn't open correctly.")
+    }
 
     if (isChannelActive (electrodeNumber, currentChannel))
     {
@@ -359,11 +319,8 @@ void SpikeDetectorDynamic::addWaveformToSpikeObject (SpikeEvent::SpikeBuffer& s,
         for (int sample = 0; sample < spikeLength; ++sample)
         {
             //add sample to spike buffer
-            // getNextSample depends on the sampleIndex
             float data_sample = getNextSample(*(electrodes[electrodeNumber]->channels + currentChannel));
-
-            //output.writeText(String(data_sample) + String("\n"),false,false);
-
+            output.writeText(String(data_sample),false,false);
             s.set(currentChannel,sample, data_sample);
             ++sampleIndex;
 
@@ -384,29 +341,27 @@ void SpikeDetectorDynamic::addWaveformToSpikeObject (SpikeEvent::SpikeBuffer& s,
     sampleIndex -= spikeLength; // reset sample index
 }
 
-int SpikeDetectorDynamic::getSpikePeakIndex(int index, int curChannel, SimpleElectrode* electrode)
+int SpikeDetectorDynamic::getSpikePeakIndex(int index, SimpleElectrode* electrode)
 {
     //find the peak index of of the threshold crossing point 
 
     int peakIndex = index;
-    while (abs(getSampleFromBuffer(curChannel,index)) < abs(getSampleFromBuffer(curChannel, index+1)))
+    index++;
+    while (abs(getSampleFromBuffer(currentChannel,index)) < abs(getSampleFromBuffer(currentChannel, index+1)))
     {
         index++;		// Keep going until finding the largest point or peak
     }
     peakIndex = index;
-    float peak_amp = abs(getSampleFromBuffer(curChannel, index));
+    float peak_amp = getSampleFromBuffer(currentChannel, index);
 
     // check that there are no other peaks happening within num_samples (prePeakSamples + postPeakSamples)
     // if there is another peak detected, replace the peak with the larger one
-    // note this will only search for the maximum point, it doesn't care whether it is a peak or not
 
-    //int num_samples = electrode->prePeakSamples + electrode->postPeakSamples;
-    //std::cout << "peakIndex before correction " << peakIndex << std::endl;
-    int num_samples = electrode->postPeakSamples / 2; //if the second peak is far away, then probably it belongs to another neuron
+    int num_samples = electrode->prePeakSamples + electrode->postPeakSamples;
     int current_test_sample = 1;
     while (current_test_sample < num_samples)
     {
-        if (peak_amp > abs(getSampleFromBuffer(curChannel, index+1)))
+        if (peak_amp > getSampleFromBuffer(currentChannel, index+1))
         {
             current_test_sample++;
             index++;
@@ -415,15 +370,14 @@ int SpikeDetectorDynamic::getSpikePeakIndex(int index, int curChannel, SimpleEle
         {
             // found another large peak, replace
             peakIndex = index;
-            peak_amp = abs(getCurrentSample(curChannel));
+            peak_amp = abs(getCurrentSample(currentChannel));
             index++;
             current_test_sample = 1;
         }
     }
-    //std::cout << "peakindex after correction " << peakIndex << std::endl;
+
     return peakIndex;
 }
-
 
 
 void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
@@ -432,7 +386,6 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
     SimpleElectrode* electrode;
     dataBuffer = &buffer;
     // checkForEvents(events); // need to find any timestamp events before extracting spikes
-
 
     if(isEnableDetection){
         for (int i = 0; i < electrodes.size(); i++)
@@ -508,17 +461,14 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
 
                         bool isSpikeDetected;
 
-                        // check if a spike has been detected
-                        float curSample = getNextSample(currentChannel);
-                        isSpikeDetected = detectSpike(curSample, dyn_thresholds[chan][window_number], curDetectionSign);
-                        //isSpikeDetected = abs(getNextSample(currentChannel)) > dyn_thresholds[chan][window_number];
+                        isSpikeDetected = abs(getNextSample(currentChannel)) > dyn_thresholds[chan][window_number];
 
-                        //auto ts = getTimestamp(electrode->channels[0])+sampleIndex; //only for debugging purpose
-       
+
                         if (isSpikeDetected) // trigger spike
                         {
 
-                            int peakIndex = getSpikePeakIndex(sampleIndex, currentChannel, electrode);
+                            int peakIndex = getSpikePeakIndex(sampleIndex, electrode);
+
 
                             AddSpikeEvent(peakIndex, electrode, i);
 
@@ -610,13 +560,13 @@ void SpikeDetectorDynamic::computeMedianThreshold(SimpleElectrode* electrode, in
     }
 }
 
-void SpikeDetectorDynamic::computeSimpleThreshold(SimpleElectrode* electrode, std::vector<std::vector<float>>& thresholds)
+void SpikeDetectorDynamic::computeSimpleThreshold(SimpleElectrode* electrode, std::vector<std::vector<float>>& dyn_thresholds)
 {
     //set all channel to be the same
 
     for (int chan = 0; chan < electrode->numChannels; chan++) {
-        for (int j = 0; j < thresholds[chan].size(); j++) {
-            thresholds[chan][j] = float(*(electrode->thresholds + chan));
+        for (int j = 0; j < dyn_thresholds[chan].size(); j++) {
+            dyn_thresholds[chan][j] = float(*(electrode->thresholds + chan));
         }
     }
 
@@ -624,23 +574,11 @@ void SpikeDetectorDynamic::computeSimpleThreshold(SimpleElectrode* electrode, st
 
 void SpikeDetectorDynamic::AddSpikeEvent(int& peakIndex, SimpleElectrode* electrode, int& electrodeIdx)
 {
-
-    auto ts_start = getTimestamp(electrode->channels[0]);
-    int64 timestamp = ts_start + peakIndex + 1; //getTimestamp is at the start of the buffer
-    //std::cout << "timestamp " << timestamp << std::endl;
-
-    // force correction for debug
-  /*  auto ts_correct = timestamp / 15000 * 15000;
-    int peakIndex = peakIndex2 - (timestamp - ts_correct);*/
-
     sampleIndex = peakIndex - (electrode->prePeakSamples - 1); //at the beginning of spike
-    //sample index will be used in addWaveformToSpikeObject later to access the raw data
 
     const SpikeChannel* spikeChan = getSpikeChannel(electrodeIdx);
     SpikeEvent::SpikeBuffer spikeData(spikeChan);
     Array<float> thresholds;
-                                                            //create spike event
-
 
     //Copy spike data to spike buffer, all channels from the electrode will be copied
     for (int channel = 0; channel < electrode->numChannels; ++channel)
@@ -648,16 +586,17 @@ void SpikeDetectorDynamic::AddSpikeEvent(int& peakIndex, SimpleElectrode* electr
         addWaveformToSpikeObject(spikeData,
             peakIndex,
             electrodeIdx, //electrode no.
-            channel,
-            timestamp);
+            channel);
         thresholds.add((int)*(electrode->thresholds + channel)); //pointer arithmetics
     }
 
 
-  
+    auto ts_start = getTimestamp(electrode->channels[0]);
+    int64 timestamp = ts_start + peakIndex + 1; //getTimestamp is at the start of the buffer
+                                                                        //create spike event
     SpikeEventPtr newSpike = SpikeEvent::createSpikeEvent(spikeChan, timestamp, thresholds, spikeData, 0);
 
-    //std::cout << "peak timestamp: " << timestamp << std::endl;
+                                                                                                                                                                                                    std::cout << "peak timestamp: " << timestamp << std::endl;
 
 
     // // package spikes;
