@@ -521,6 +521,7 @@ void SpikeDetectorDynamic::process(AudioSampleBuffer& buffer)
                             int peakIndex = getSpikePeakIndex(sampleIndex, currentChannel, electrode);
 
                             AddSpikeEvent(peakIndex, electrode, i);
+                            //printf("Spike detected at tetrode %d eletrode %d\n", i, chan);
 
                             // advance the sample index
                             sampleIndex = peakIndex + electrode->postPeakSamples;

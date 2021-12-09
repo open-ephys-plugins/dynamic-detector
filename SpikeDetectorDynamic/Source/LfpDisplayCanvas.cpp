@@ -3244,11 +3244,13 @@ void LfpChannelDisplay::setEnabledState(bool state)
 {
 
     //if (state)
-    //std::cout << "Setting channel " << name << " to true." << std::endl;
+    //    std::cout << "Setting channel " << name << " to true." << std::endl;
     //else
-    //std::cout << "Setting channel " << name << " to false." << std::endl;
+    //    std::cout << "Setting channel " << name << " to false." << std::endl;
 
     isEnabled = state;
+
+ 
 
 }
 
@@ -3513,9 +3515,27 @@ void LfpChannelDisplay::pxPaint()
             // Figure out which electrode it is 
             spikeFlag = false;
 
-            if (chan < (*spikeElectrodes).size()*4) {
+            // a spikeElectrode can contain multiple channels
+             //calculate the total number of spikechannels, only do it on first run
+            if (this->numSpikeChannel == 0) {
+                for (int i = 0; i < spikeElectrodes->size(); i++) {
+                    int numChannels = (*spikeElectrodes)[i]->numChannels;
+                    numSpikeChannel += numChannels;
+
+                    // mark down which channel correspond to which electrode
+                    for (int j = 0; j < numChannels; j++) {
+                        channel2electrode.add(i);
+                    }
+                }
+
+                printf("Number of spike channel: %d\n", this->numSpikeChannel);
+            }
+            
+
+            if (chan < this->numSpikeChannel) {
                 //skip the event channel
-                int electrodeNum = chan / 4; //TODO: hardcoded for now
+
+                int electrodeNum = this->channel2electrode[chan]; 
                 Electrode* e = (*spikeElectrodes)[electrodeNum];
 
                 // First remove spikes that are off screen
@@ -3670,7 +3690,11 @@ void LfpChannelDisplay::changeParameter(int id)
         default:
             break;
     }
+
+
+
 }
+
 
 void LfpChannelDisplay::setRange(float r)
 {

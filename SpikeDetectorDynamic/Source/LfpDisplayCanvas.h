@@ -791,6 +791,10 @@ protected:
     
     OwnedArray<Electrode>* spikeElectrodes; 
 
+    int numSpikeChannel=0; //the number of total channel for spikes
+
+    Array<int> channel2electrode; //which channel correponds to which electrode
+
 };
    
     
