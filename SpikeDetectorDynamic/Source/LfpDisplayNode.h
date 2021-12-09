@@ -99,7 +99,7 @@ public:
 
     OwnedArray<Electrode>* getElectrodes();
 
-    int64 getDisplayBufferStartTimestamp(int chan);
+    int64 getDisplayBufferStartTimestamp();
 
 private:
     void initializeEventChannels();
@@ -114,7 +114,7 @@ private:
 
     float displayGain; //
     float bufferLength; // 
-    Array<int64> displayBufferStartTimestamp; //timestamp of the beginning of display buffer, in no. of samples, not actual time
+    int64 displayBufferStartTimestamp; //timestamp of the beginning of display buffer, in no. of samples, not actual time
 
     AbstractFifo abstractFifo;
 
@@ -135,6 +135,8 @@ private:
     static uint32 getEventSourceId(const EventChannel* event);
     static uint32 getChannelSourceId(const InfoObjectCommon* chan);
 
+    ScopedPointer<AudioSampleBuffer> spikeBuffer; //whether a certain pixel in a certain pixel contains spikes
+    Array<SpikeEventPtr> spikesLeftOver; //leftover spikes
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LfpDisplayNode);
 };
 };

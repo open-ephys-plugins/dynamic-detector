@@ -403,8 +403,7 @@ void LfpDisplayCanvas::updateScreenBuffer()
 			//if (channel == 15 || channel == 16)
 			//     std::cout << channel << " " << sbi << " " << dbi << " " << nSamples << std::endl;
 
-
-			float ratio = sampleRate * timebase / float(getWidth() - leftmargin - scrollBarThickness); // samples / pixel
+			float ratio = sampleRate * timebase / float(getWidth() - leftmargin - scrollBarThickness); // number of samples per pixel
 			
             screenPixelRatio.set(channel, ratio);
                                                                                                            // this number is crucial: converting from samples to values (in px) for the screen buffer
@@ -3554,31 +3553,9 @@ void LfpChannelDisplay::pxPaint()
             
                 }
 
-                // check the spiketimestamp order
-          /*      int64 prevTime = 0;
-                for (int spikeIdx = 0; spikeIdx < e->mostRecentSpikes.size(); spikeIdx++) {
-                    auto timestamp = e->mostRecentSpikes[spikeIdx]->getTimestamp();
-                    if (timestamp < prevTime) {
-                        std::cout << "Error: timestamp not in order" << std::endl;
-
-                    }
-                    prevTime = timestamp;
-
-                }*/
 
                 //TODO: possible bug: if the spikes are detected after the signals are draw, they will never be shown
 
-        /*        if (chan == 4) {
-                    std::cout << "start time stamp: " << startTimeStamp << std::endl;
-                    std::cout << "idx2delete: " << idx2delete << std::endl;
-
-                    std::cout << chan << ": spike array: " << e->mostRecentSpikes.size() << "(";
-                    for (int spikeIdx = 0; spikeIdx < std::min(e->mostRecentSpikes.size(),10); spikeIdx++) {
-                        auto timestamp = e->mostRecentSpikes[spikeIdx]->getTimestamp();
-                        std::cout << timestamp <<" "; 
-                    }
-                    std::cout << ")"<< std::endl;
-                }*/
 
                 // One electrode can contains multiple channels, each of the electrode has an array
                 // containining a list of spike events
