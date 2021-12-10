@@ -41,7 +41,7 @@ LfpDisplayCanvas::LfpDisplayCanvas(LfpDisplayNode* processor_) :
 
     displayBuffer = processor->getDisplayBufferAddress();
     displayBufferSize = displayBuffer->getNumSamples();
-    std::cout << "Setting displayBufferSize on LfpDisplayCanvas to " << displayBufferSize << std::endl;
+    printf("Setting displayBufferSize on LfpDisplayCanvas to %d\n",displayBufferSize);
 
     screenBuffer = new AudioSampleBuffer(MAX_N_CHAN, MAX_N_SAMP);
     screenBuffer->clear();
@@ -52,6 +52,10 @@ LfpDisplayCanvas::LfpDisplayCanvas(LfpDisplayNode* processor_) :
     screenBufferMean->clear();
     screenBufferMax = new AudioSampleBuffer(MAX_N_CHAN, MAX_N_SAMP);
     screenBufferMax->clear();
+
+    screenSpikeBuffer = new AudioSampleBuffer(MAX_N_CHAN, MAX_N_SAMP);
+    screenSpikeBuffer->clear();
+    spikeBuffer = processor->getSpikeBufferAddress();
 
     viewport = new LfpViewport(this);
     lfpDisplay = new LfpDisplay(this, viewport);
@@ -364,6 +368,9 @@ void LfpDisplayCanvas::refreshScreenBuffer()
 void LfpDisplayCanvas::updateScreenBuffer()
 {
     //update the screen buffer. The screen buffer is used to store the samples used for plotting
+    // It downsample the displaybuffer and copy those to the screen buffer for later display
+    // The ratio of the displaybuffer to screenbuffer is determined by the screen resolution and time base
+    // dbi and sbi determine the current position that we are reading from the display buffer and screen buffer respectively
 
 	if (true)
 	{
@@ -453,6 +460,7 @@ void LfpDisplayCanvas::updateScreenBuffer()
 						screenBufferMean->clear(channel, sbi, 1);
 						screenBufferMin->clear(channel, sbi, 1);
 						screenBufferMax->clear(channel, sbi, 1);
+                        screenSpikeBuffer->clear(channel, sbi, 1); //the screenSpikeBuffer works similarly to screenBufferMax etc.
 
 						dbi %= displayBufferSize; // just to be sure
 
@@ -481,6 +489,9 @@ void LfpDisplayCanvas::updateScreenBuffer()
 						float sample_max = -10000000;
 						float sample_mean = 0;
 
+                        //also check if there is spike
+                        float sample_hasSpike = false;
+
 						int nextpix = (dbi + (int)ratio + 1) % (displayBufferSize + 1); //  position to next pixels index
 
 						if (nextpix <= dbi) { // at the end of the displaybuffer, this can occur and it causes the display to miss one pixel woth of sample - this circumvents that
@@ -506,6 +517,10 @@ void LfpDisplayCanvas::updateScreenBuffer()
 							{
 								sample_max = sample_current;
 							}
+
+                            //Mark down if there is any spikes in the current region
+                            float hasSpike_current = spikeBuffer->getSample(channel, j);
+                            sample_hasSpike = sample_hasSpike || hasSpike_current;
 
 						}
 
@@ -542,6 +557,8 @@ void LfpDisplayCanvas::updateScreenBuffer()
 
 							screenBufferMin->addSample(channel, sbi, sample_min*gain);
 							screenBufferMax->addSample(channel, sbi, sample_max*gain);
+
+                            screenSpikeBuffer->addSample(channel, sbi, sample_hasSpike);
 						}
 						sbi++;
 					}
@@ -610,6 +627,12 @@ const float LfpDisplayCanvas::getYCoordMax(int chan, int samp)
 {
     return *screenBufferMax->getReadPointer(chan, samp);
 }
+
+const float LfpDisplayCanvas::hasSpike(int chan, int samp)
+{
+    return *screenSpikeBuffer->getReadPointer(chan, samp);
+}
+
 
 std::array<float, MAX_N_SAMP_PER_PIXEL> LfpDisplayCanvas::getSamplesPerPixel(int chan, int px)
 {
@@ -3211,7 +3234,7 @@ LfpChannelDisplay::LfpChannelDisplay(LfpDisplayCanvas* c, LfpDisplay* d, LfpDisp
     type = options->getChannelType(channelNumber);
     typeStr = options->getTypeName(type);
 
-    setSpikeElectrodes(c->getProccessor()->getElectrodes());
+    //setSpikeElectrodes(c->getProccessor()->getElectrodes());
 
 }
 
@@ -3234,10 +3257,6 @@ void LfpChannelDisplay::updateType()
     typeStr = options->getTypeName(type);
 }
 
-void LfpViewer::LfpChannelDisplay::setSpikeElectrodes(OwnedArray<Electrode>* electrodes)
-{
-    spikeElectrodes = electrodes;
-}
 
 void LfpChannelDisplay::setEnabledState(bool state)
 {
@@ -3512,98 +3531,7 @@ void LfpChannelDisplay::pxPaint()
             ////////////////////////////////////////
             // Plotting spikes
             // Figure out which electrode it is 
-            spikeFlag = false;
-
-            // a spikeElectrode can contain multiple channels
-             //calculate the total number of spikechannels, only do it on first run
-            if (this->numSpikeChannel == 0) {
-                for (int i = 0; i < spikeElectrodes->size(); i++) {
-                    int numChannels = (*spikeElectrodes)[i]->numChannels;
-                    numSpikeChannel += numChannels;
-
-                    // mark down which channel correspond to which electrode
-                    for (int j = 0; j < numChannels; j++) {
-                        channel2electrode.add(i);
-                    }
-                }
-
-                printf("Number of spike channel: %d\n", this->numSpikeChannel);
-            }
-            
-
-            if (chan < this->numSpikeChannel) {
-                //skip the event channel
-
-                int electrodeNum = this->channel2electrode[chan]; 
-                Electrode* e = (*spikeElectrodes)[electrodeNum];
-
-                // First remove spikes that are off screen
-                auto startTimeStamp = canvas->getTimeStampScreenStart(chan);
-
-                int idx2delete = -1;
-                for (int spikeIdx = 0; spikeIdx < e->mostRecentSpikes.size(); spikeIdx++) {
-                    auto timestamp = e->mostRecentSpikes[spikeIdx]->getTimestamp();
-                    if (timestamp < startTimeStamp) {
-                        // Assume the spikes are sorted in ascending order of their timestamp
-                        idx2delete = spikeIdx;
-                    }
-                    else {
-                        break;
-                    }
-            
-                }
-
-
-                //TODO: possible bug: if the spikes are detected after the signals are draw, they will never be shown
-
-
-                // One electrode can contains multiple channels, each of the electrode has an array
-                // containining a list of spike events
-                if (chan % 4 == 0) {
-                    // only the first channel in each electrode will be responsible for remove spikes
-
-                    if (idx2delete >= 0) {
-                        // same objects
-                        e->mostRecentSpikes.removeRange(0, idx2delete);
-                    }
-                }
-
-
-                auto ratio = canvas->getScreenPixelRatio(chan);
-                auto curTimestamp = round(startTimeStamp + i * ratio);
-
-
-                for (int spikeIdx = 0; spikeIdx < e->mostRecentSpikes.size(); spikeIdx++) {
-                    // check if there is a spike hit
-                    auto spikeTimestamp = e->mostRecentSpikes[spikeIdx]->getTimestamp();
-
-                /*    if (chan == 0) {
-                        std::cout << spikeTimestamp <<" ";
-                    }*/
-                    // The screen pixel are downsampled from the display buffer
-                    // So there may not be an exact match
-                    if (abs(curTimestamp -spikeTimestamp) < ratio) {
-                        //std::cout << "Spike hit at " << (startTimeStamp + i*ratio) << std::endl;
-                        // TODO: remove repeated check by multiple channel on the same spike
-                        spikeFlag = true;
-                        //idx2delete = spikeIdx;
-                        break;
-
-                    }
-                }
-
-
-
-       /*         if (chan == 0) {
-                    std::cout << std::endl;
-                    std::cout << "[" << curTimestamp << "]" << std::endl;
-                }*/
-
-                //std::cout << "[" << curTimestamp << "]" << std::endl;
-
-            }
-            
-            
+            spikeFlag = this->canvas->hasSpike(chan, i);
             
             if (spikeFlag) // draw spikes
             {

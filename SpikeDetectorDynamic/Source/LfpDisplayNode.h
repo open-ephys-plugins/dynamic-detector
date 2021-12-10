@@ -83,6 +83,7 @@ public:
 
 
     AudioSampleBuffer* getDisplayBufferAddress() const { return displayBuffer; }
+    AudioSampleBuffer* getSpikeBufferAddress() const { return spikeBuffer; }
 
     int getDisplayBufferIndex (int chan) const { return displayBufferIndex[chan]; }
 
@@ -100,6 +101,7 @@ public:
     OwnedArray<Electrode>* getElectrodes();
 
     int64 getDisplayBufferStartTimestamp();
+
 
 private:
     void initializeEventChannels();
@@ -134,6 +136,10 @@ private:
 
     static uint32 getEventSourceId(const EventChannel* event);
     static uint32 getChannelSourceId(const InfoObjectCommon* chan);
+
+    
+    Array<Array<uint16>> electrode2channel;
+    void updateSpikeElectrodeInfo();
 
     ScopedPointer<AudioSampleBuffer> spikeBuffer; //whether a certain pixel in a certain pixel contains spikes
     Array<SpikeEventPtr> spikesLeftOver; //leftover spikes

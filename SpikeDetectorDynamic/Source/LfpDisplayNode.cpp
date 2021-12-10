@@ -168,6 +168,24 @@ uint32 LfpDisplayNode::getChannelSourceId(const InfoObjectCommon* chan)
     return getProcessorFullId(chan->getSourceNodeID(), chan->getSubProcessorIdx());
 }
 
+void LfpViewer::LfpDisplayNode::updateSpikeElectrodeInfo()
+{
+    // Find out the mapping between electrode and channels
+    uint16 electrodeNo = 0;
+    for (int i = 0; i < this->electrodes.size(); i++) {
+        // mark down which electrode correpond to which channel
+        Array<uint16> electrodeMapping;
+        for (int j = 0; j < electrodes[i]->numChannels; j++) {
+            electrodeMapping.add(electrodeNo);
+
+            printf("Channel %d belongs to electrode %d\n", electrodeNo, i);
+            electrodeNo += 1;
+
+        }
+        electrode2channel.add(electrodeMapping);
+    }
+}
+
 uint32 LfpDisplayNode::getDataSubprocId(int chan) const
 {
     if (chan < 0 || chan >= getTotalDataChannels())
@@ -247,7 +265,7 @@ bool LfpDisplayNode::resizeBuffer()
 
         //initilaize the spike buffer
         
-        this->spikeBuffer->setSize( this->getElectrodes()->size(), nSamples);
+        this->spikeBuffer->setSize(nInputs+1, nSamples);
         this->spikeBuffer.get()->clear();
         printf("LfpDisplaynode electrode size set to %d \n", this->spikeBuffer.get()->getNumChannels());
         
@@ -380,6 +398,15 @@ void LfpDisplayNode::handleEvent(const EventChannel* eventInfo, const MidiMessag
 
 void LfpDisplayNode::handleSpike(const SpikeChannel* spikeInfo, const MidiMessage& event, int samplePosition) {
 
+    /*
+    We have a spikeBuffer that has the same size as the displayBuffer. Upon receiving a spike, we mark in the spikeBuffer the location
+    of the spike. When displayCanvas display the signal, it will copy displayBuffer into screenBuffer,
+    it also has another screenSpikeBuffer that downsample the spikeBuffer into the same size as screenBuffer.
+    The element inside screenSpikeBUffer indicate whether there is a spike in that pixel. This information can be used
+    by channelDisplay to draw the spike raster line
+
+    */
+
     // When the pointer go out of scope, it will be destoryed
     SpikeEventPtr newSpike = SpikeEvent::deserializeFromMessage(event, spikeInfo); // a smart pointer
     if (!newSpike) return;
@@ -393,34 +420,28 @@ void LfpDisplayNode::handleSpike(const SpikeChannel* spikeInfo, const MidiMessag
     if (relativeTime < totalSamples) {
         // Since the latest spikes has timesatmp within the display buffer range, then all previous
         // spikes should also be within range
-        //pop left over spikes 
+        // pop left over spikes 
 
-        for (SpikeEventPtr &spike : spikesLeftOver) {
+        for (SpikeEventPtr& spike : spikesLeftOver) {
             int electrodeNum = getSpikeChannelIndex(spike);
             auto timeStamp = spike->getTimestamp();
 
             auto relativeTime = timeStamp - this->displayBufferStartTimestamp;
 
             jassert(relativeTime < totalSamples);
-            this->spikeBuffer->setSample(electrodeNum, relativeTime, 1);
-            printf("Marking spikes at electrode %d time %d\n", electrodeNum, relativeTime);
+
+            for (uint16& chanNo : this->electrode2channel[electrodeNum]) {
+                if (relativeTime>0)
+                    this->spikeBuffer->setSample(chanNo, relativeTime, 1);
+                    //printf("Marking spikes at electrode %d time %d\n", electrodeNum, relativeTime);
+            }
+ 
         }
 
         spikesLeftOver.clear();
         
     }
-   
 
-    //Electrode* e = electrodes[electrodeNum];
-
-
-
-    //e->mostRecentSpikes.set(e->currentSpikeIndex, newSpike.release());
-    //e->currentSpikeIndex++;
-
-    // Mark the spike location in an array indicating whether there is a spike at that location
-
-    
 }
 
 
@@ -506,6 +527,10 @@ void LfpDisplayNode::process (AudioSampleBuffer& buffer)
 			finalizeEventChannels();
 		}
 
+        if (this->electrode2channel.size() == 0)
+            updateSpikeElectrodeInfo();
+
+       
 		if (true)
 		{
 			int channelIndex = -1;

@@ -134,6 +134,7 @@ public:
     const float getYCoordMin(int chan, int samp);
     const float getYCoordMean(int chan, int samp);
     const float getYCoordMax(int chan, int samp);
+    const float hasSpike(int chan, int samp);
 
     float getMean(int chan);
     float getStd(int chan);
@@ -224,6 +225,9 @@ private:
     Array<int> timeStampScreenStart; //store the display buffer index at the beginning of screen buffer
     Array<int> wrapAroundCycle;
     Array<float> screenPixelRatio; //ratio of screen pixel to sample points
+
+    ScopedPointer<AudioSampleBuffer> screenSpikeBuffer; //indicate whether a electrode has spikes
+    AudioSampleBuffer* spikeBuffer;
 
 };
 
@@ -754,7 +758,6 @@ public:
 
     bool fullredraw; // used to indicate that a full redraw is required. is set false after each full redraw
 
-    void setSpikeElectrodes(OwnedArray<Electrode>* electrodes);
 
 protected:
 
@@ -788,12 +791,6 @@ protected:
 
 	DataChannel::DataChannelTypes type;
     String typeStr;
-    
-    OwnedArray<Electrode>* spikeElectrodes; 
-
-    int numSpikeChannel=0; //the number of total channel for spikes
-
-    Array<int> channel2electrode; //which channel correponds to which electrode
 
 };
    
