@@ -66,6 +66,12 @@ if(MSVC)
 	install(DIRECTORY ${PROJECT_FOLDER}/Build/${CONFIGURATION_FOLDER}/ DESTINATION ${GUI_BIN_DIR}/plugins  CONFIGURATIONS ${CMAKE_CONFIGURATION_TYPES})
 
 	set(CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../libs)
+
+	# include the debugger command so that debugging can start easily
+	set_property(TARGET ${PLUGIN_NAME} PROPERTY VS_DEBUGGER_COMMAND ${GUI_BASE_DIR}/Build/${CONFIGURATION_FOLDER}/open-ephys.exe)
+	# always include the INSTALL project in default build so that the plugins are installed in proper location
+	set(CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD 1)
+
 elseif(LINUX)
 	target_link_libraries(${PLUGIN_NAME} GL X11 Xext Xinerama asound dl freetype pthread rt)
 	set_property(TARGET ${PLUGIN_NAME} APPEND_STRING PROPERTY LINK_FLAGS
