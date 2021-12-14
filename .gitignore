@@ -1,6 +1,1 @@
-﻿################################################################################
-# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
-################################################################################
-
-/.vs
-/SpikeDetectorDynamic/out/build/x64-Debug
+Build/*
