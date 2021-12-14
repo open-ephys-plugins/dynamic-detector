@@ -1,23 +1,16 @@
-# DynamicSpikeDetectorPlugin
+# OESpikeUtilities
 
-![logo](https://github.com/camigord/DynamicSpikeDetectorPlugin/blob/master/plugin.jpg)
+This plugin packages provides several plugins used for online spike detection and display. The plugins include
 
-Spike detector plugin for the open-ephys [plugin-GUI](https://github.com/open-ephys/plugin-GUI/). This is a modification of the standard SpikeDetector plugin where instead of using a fixed amplitude threshold, we compute a dynamic threshold according to the signal's noise as described by [Quiroga et al.](http://www.ncbi.nlm.nih.gov/pubmed/15228749). The plugin remains compatible with the standard SpikeViewer plugin.
+## Dynamic Spike Detector
+This plugin was modified from the [original dynamic threshold plugin](https://github.com/camigord/DynamicSpikeDetectorPlugin). We fixed some of its bugs and added in various quality of life improvements. In particular, it allows setting the threshold for all channel at once. It also allow specifying the detection sign. The spike detection only works when the `Enable` toggle is enabled. It currently supports two methods of spike detection. The `Simple` one just detect spike based on signal ampitude. The `Median` method is based on median of the absolute signal. Please note the `Simple` one may actually work better on whitened signals. The `Median` method calculate the median threshold based on a very small segment of signal in the input buffer, which may not be optimum. We plan to change this behaviour in near future.
 
-## What is new:
+<img width="333" alt="image" src="https://user-images.githubusercontent.com/3406709/146046735-ac352dac-4223-4c53-abbe-a65ad93d523f.png">
 
-- Detection threshold is computed dynamically as described by [Quiroga et al.](http://www.ncbi.nlm.nih.gov/pubmed/15228749)
-    
-<p align="center">
-  <b>Thr = 4&sigma;<sub>n</sub></b><br>
-  <b>&sigma;<sub>n</sub> = <i>median</i>{|x| / 0.6745}</b>
-</p>
+## LFP Spike Viewer
 
-- The ammount of samples which are taken before and after the spike's peak are no longer fixed, but computed based on the sampling frequency (capturing ~1ms around the peak)
-- The threshold which is sent to the next module (i.e SpikeViewer) corresponds to the dynamic threshold computed at the peak of the spike.
-- Some additional modifications were performed on the spike extraction code in order to avoid the extraction of spikes which are too close together (overlapping spikes), giving priority to the largest ones. Moreover, the code was improved to look for the peaks of the spikes and not only for the moment when the threshold is reached.
+This plugin is modified from the original LFP viewer but add an overlay on top of the neural signals to show the spike location. It will be useful for monitoring the quality of the spike detection and help setting the detect threshold.
+<img width="914" alt="image" src="https://user-images.githubusercontent.com/3406709/146047977-8ea3aab3-73c8-47cf-be67-8cdf9aee85b7.png">
 
 ## Installation
-
-Copy the SpikeDetectorDynamic folder to the plugin folder of your GUI. Then build 
-the plugin as described in the [wiki](https://open-ephys.atlassian.net/wiki/display/OEW/Linux).
+Please follow the Open Ephys GUI page to build this plugin: [link](https://open-ephys.atlassian.net/wiki/spaces/OEW/pages/1301643269/Creating+Build+files)
