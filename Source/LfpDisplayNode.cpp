@@ -161,27 +161,27 @@ void LfpDisplayNode::updateSettings()
 	ed->updateSubprocessorSelectorOptions();
 
     //update spike channel
-    electrodes.clear();
-    for (int i = 0; i < spikeChannelArray.size(); ++i)
-    {
-        std::cout << "Adding electrode " << std::endl;
+    //electrodes.clear();
+    //for (int i = 0; i < spikeChannelArray.size(); ++i)
+    //{
+    //    std::cout << "Adding electrode " << std::endl;
 
-        SimpleElectrode* elec = new SimpleElectrode();
-        elec->numChannels = spikeChannelArray[i]->getNumChannels();
-        elec->bitVolts = spikeChannelArray[i]->getChannelBitVolts(0); //lets assume all channels have the same bitvolts
-        elec->name = spikeChannelArray[i]->getName();
-        elec->currentSpikeIndex = 0;
-        //elec->mostRecentSpikes.ensureStorageAllocated(displayBufferSize);
+    //    SimpleElectrode* elec = new SimpleElectrode();
+    //    elec->numChannels = spikeChannelArray[i]->getNumChannels();
+    //    elec->bitVolts = spikeChannelArray[i]->getChannelBitVolts(0); //lets assume all channels have the same bitvolts
+    //    elec->name = spikeChannelArray[i]->getName();
+    //    elec->currentSpikeIndex = 0;
+    //    //elec->mostRecentSpikes.ensureStorageAllocated(displayBufferSize);
 
-        for (int j = 0; j < elec->numChannels; ++j)
-        {
-            elec->displayThresholds.add(0);
-            elec->detectorThresholds.add(0);
-        }
+    //    for (int j = 0; j < elec->numChannels; ++j)
+    //    {
+    //        elec->displayThresholds.add(0);
+    //        elec->detectorThresholds.add(0);
+    //    }
 
-        electrodes.add(elec);
+    //    electrodes.add(elec);
 
-    }
+    //}
 }
 
 uint32 LfpDisplayNode::getEventSourceId(const EventChannel* event)
@@ -312,6 +312,8 @@ void LfpViewer::LfpDisplayNode::computeMedianThreshold(SimpleElectrode* electrod
         currentChannelIndex = channelNum;
         std::cout << "Setting electrode " << electrodeNum << " channel threshold " << channelNum << " to " << thresh << std::endl;
         //setParameter(99, thresh);
+
+        printf("Current electrode size %d\n", electrodes.size());
 
         if (currentElectrode > -1)
         {
@@ -572,17 +574,17 @@ bool LfpDisplayNode::disable()
 
 void LfpDisplayNode::setParameter (int parameterIndex, float newValue)
 {
-    if (parameterIndex == 99 && currentElectrode > -1)
-    {
-        *(electrodes[currentElectrode]->thresholds + currentChannelIndex) = newValue;
-    }
-    else if (parameterIndex == 98 && currentElectrode > -1)
-    {
-        if (newValue == 0.0f)
-            *(electrodes[currentElectrode]->isActive + currentChannelIndex) = false;
-        else
-            *(electrodes[currentElectrode]->isActive + currentChannelIndex) = true;
-    }
+    //if (parameterIndex == 99 && currentElectrode > -1)
+    //{
+    //    *(electrodes[currentElectrode]->thresholds + currentChannelIndex) = newValue;
+    //}
+    //else if (parameterIndex == 98 && currentElectrode > -1)
+    //{
+    //    if (newValue == 0.0f)
+    //        *(electrodes[currentElectrode]->isActive + currentChannelIndex) = false;
+    //    else
+    //        *(electrodes[currentElectrode]->isActive + currentChannelIndex) = true;
+    //}
 
     //editor->updateParameterButtons (parameterIndex);
     ////

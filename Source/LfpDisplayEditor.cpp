@@ -243,7 +243,6 @@ void LfpDisplayEditor::buttonClicked(Button *button)
     VisualizerEditor::buttonClicked(button);
 }
 
-// not really being used (yet)...
 void LfpDisplayEditor::buttonEvent(Button* button)
 {
     if (electrodeButtons.contains((ElectrodeButton*)button))
