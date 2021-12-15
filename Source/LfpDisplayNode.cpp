@@ -33,6 +33,8 @@ LfpDisplayNode::LfpDisplayNode()
     , displayGain       (1)
     , bufferLength      (10.0f) //in terms of seconds
     , abstractFifo      (100)
+    , uniqueID(0)
+    , currentElectrode(-1)
 {
     setProcessorType (PROCESSOR_TYPE_SINK);
 
@@ -48,6 +50,30 @@ LfpDisplayNode::LfpDisplayNode()
 
 	subprocessorToDraw = 0;
 	numSubprocessors = -1;
+
+    //Initialize variables for spike detector
+    electrodeTypes.add("single electrode");
+    electrodeTypes.add("stereotrode");
+    electrodeTypes.add("tetrode");
+
+    //detection method
+    detectionMethod.add("Median");
+    detectionMethod.add("Simple");
+
+    curDetectionMethod = "Median";
+
+    //detectoin sign
+    detectionSign.add("+ve");
+    detectionSign.add("-ve");
+    detectionSign.add("Both");
+    curDetectionSign = "-ve";
+
+    //
+
+    for (int i = 0; i < electrodeTypes.size() + 1; i++)
+    {
+        electrodeCounter.add(0);
+    }
 }
 
 
@@ -140,7 +166,7 @@ void LfpDisplayNode::updateSettings()
     {
         std::cout << "Adding electrode " << std::endl;
 
-        Electrode* elec = new Electrode();
+        SimpleElectrode* elec = new SimpleElectrode();
         elec->numChannels = spikeChannelArray[i]->getNumChannels();
         elec->bitVolts = spikeChannelArray[i]->getChannelBitVolts(0); //lets assume all channels have the same bitvolts
         elec->name = spikeChannelArray[i]->getName();
@@ -186,6 +212,242 @@ void LfpViewer::LfpDisplayNode::updateSpikeElectrodeInfo()
     }
 }
 
+void LfpViewer::LfpDisplayNode::computeMedianThreshold(SimpleElectrode* electrode, int nSamples, int& sample_counter, std::vector<std::vector<float>>& dyn_thresholds, int& window_number)
+{
+    //for (int chan = 0; chan < electrode->numChannels; chan++)
+    //{
+    //    int currentChannel = *(electrode->channels + chan);
+    //    std::vector<float> temp_values(window_size); //data in temp_value: [ch1,ch2,ch3,ch4,ch1,ch2,ch3,ch4...]
+
+    //                                                 // loop through the data on the buffer
+    //    while (samplesAvailable(nSamples))
+    //    {
+    //        sampleIndex++; //move forward one sample for getNextSample
+
+    //                       //get the sample data and store it in a vector
+    //        temp_values[sample_counter] = abs(getNextSample(currentChannel)) / scalar; //getNextSample is getting sample at sampleIndex
+    //        if (sample_counter == window_size - 1) //when the temp_value buffer is full, update the threshold
+    //        {
+    //            // Compute Threshold using values in 'temp_values'
+    //            std::sort(temp_values.begin(), temp_values.end()); //sort
+    //            float factor = float(*(electrode->thresholds + chan)); //get the threshold factor
+
+    //                                                                   //median of sorted value * factor
+    //            dyn_thresholds[chan][window_number] = factor * temp_values[floor((float)temp_values.size() / 2)];
+    //            window_number++;
+    //            sample_counter = 0;
+
+    //        }
+    //        else
+    //        {
+    //            sample_counter++;
+    //        }
+    //    }
+    //    // Check last window
+    //    if (sample_counter != 0)
+    //    {
+    //        // Remove empty elements from 'temp_values'
+    //        temp_values.erase(temp_values.begin() + sample_counter, temp_values.end());
+
+    //        // Compute Threshold using values in 'temp_values'
+    //        std::sort(temp_values.begin(), temp_values.end());
+    //        float Threshold = float(*(electrode->thresholds + chan));
+    //        dyn_thresholds[chan][window_number] = Threshold * temp_values[floor((float)temp_values.size() / 2)];
+    //    }
+
+    //    // Restart indexes from the beginning
+    //    sampleIndex = electrode->lastBufferIndex - 1;
+    //    window_number = 0;
+    //    sample_counter = 0;
+    //}
+}
+
+
+    void LfpViewer::LfpDisplayNode::computeSimpleThreshold(SimpleElectrode* electrode, std::vector<std::vector<float>>& thresholds)
+{
+    //set all channel to be the same
+
+    for (int chan = 0; chan < electrode->numChannels; chan++) {
+        for (int j = 0; j < thresholds[chan].size(); j++) {
+            thresholds[chan][j] = float(*(electrode->thresholds + chan));
+        }
+    }
+}
+
+    int LfpViewer::LfpDisplayNode::getNumChannels(int index)
+    {
+        if (index < electrodes.size())
+            return electrodes[index]->numChannels;
+        else
+            return 0;
+    }
+
+    double LfpViewer::LfpDisplayNode::getChannelThreshold(int electrodeNum, int channelNum)
+    {
+        return *(electrodes[electrodeNum]->thresholds + channelNum);
+
+    }
+
+    void LfpViewer::LfpDisplayNode::setChannelActive(int electrodeIndex, int subChannel, bool active)
+    {
+        currentElectrode = electrodeIndex;
+        currentChannelIndex = subChannel;
+
+        std::cout << "Setting channel active to " << active << std::endl;
+
+        if (active)
+            setParameter(98, 1);
+        else
+            setParameter(98, 0);
+    }
+
+    void LfpViewer::LfpDisplayNode::setEnableDetection(bool isEnable)
+    {
+        isEnableDetection = isEnable;
+    }
+
+    void LfpViewer::LfpDisplayNode::setChannelThreshold(int electrodeNum, int channelNum, float thresh)
+    {
+        currentElectrode = electrodeNum;
+        currentChannelIndex = channelNum;
+        std::cout << "Setting electrode " << electrodeNum << " channel threshold " << channelNum << " to " << thresh << std::endl;
+        //setParameter(99, thresh);
+
+        if (currentElectrode > -1)
+        {
+            *(electrodes[currentElectrode]->thresholds + currentChannelIndex) = thresh;
+        }
+    }
+
+    bool LfpViewer::LfpDisplayNode::removeElectrode(int index)
+    {
+        if (index > electrodes.size() || index < 0)
+            return false;
+
+        electrodes.remove(index);
+        return true;
+    }
+
+    bool LfpViewer::LfpDisplayNode::addElectrode(int nChans, int electrodeID)
+    {
+        std::cout << "Adding electrode with " << nChans << " channels." << std::endl;
+
+        int firstChan;
+
+        if (electrodes.size() == 0)
+        {
+            firstChan = 0;
+        }
+        else
+        {
+            SimpleElectrode* e = electrodes.getLast();
+            firstChan = *(e->channels + (e->numChannels - 1)) + 1;
+        }
+
+        if (firstChan + nChans > getNumInputs())
+        {
+            firstChan = 0; // make sure we don't overflow available channels
+        }
+
+        int currentVal = electrodeCounter[nChans];
+        electrodeCounter.set(nChans, ++currentVal);
+
+        String electrodeName;
+
+        // hard-coded for tetrode configuration
+        if (nChans < 3)
+            electrodeName = electrodeTypes[nChans - 1];
+        else
+            electrodeName = electrodeTypes[nChans - 2];
+
+        String newName = electrodeName.substring(0, 1);
+        newName = newName.toUpperCase();
+        electrodeName = electrodeName.substring(1, electrodeName.length());
+        newName += electrodeName;
+        newName += " ";
+        newName += electrodeCounter[nChans];
+
+        SimpleElectrode* newElectrode = new SimpleElectrode;
+
+        newElectrode->name = newName;
+        newElectrode->numChannels = nChans;
+        newElectrode->prePeakSamples = 20;
+        newElectrode->postPeakSamples = 20;
+        newElectrode->thresholds.malloc(nChans);
+        newElectrode->isActive.malloc(nChans);
+        newElectrode->channels.malloc(nChans);
+        newElectrode->isMonitored = false;
+
+        for (int i = 0; i < nChans; ++i)
+        {
+            *(newElectrode->channels + i) = firstChan + i;
+            *(newElectrode->thresholds + i) = getDefaultThreshold();
+            *(newElectrode->isActive + i) = true;
+        }
+
+        if (electrodeID > 0)
+        {
+            newElectrode->electrodeID = electrodeID;
+            uniqueID = std::max(uniqueID, electrodeID);
+        }
+        else
+        {
+            newElectrode->electrodeID = ++uniqueID;
+        }
+
+        resetElectrode(newElectrode);
+
+        electrodes.add(newElectrode);
+
+        currentElectrode = electrodes.size() - 1;
+
+        return true;
+    }
+
+    void LfpViewer::LfpDisplayNode::resetElectrode(SimpleElectrode* e)
+    {
+        e->lastBufferIndex = 0;
+
+    }
+
+    bool LfpViewer::LfpDisplayNode::isChannelActive(int electrodeIndex, int channelNum)
+    {
+        return *(electrodes[electrodeIndex]->isActive + channelNum);
+
+    }
+
+    StringArray LfpViewer::LfpDisplayNode::getElectrodeNames()
+    {
+        StringArray names;
+
+        for (int i = 0; i < electrodes.size(); i++)
+        {
+            names.add(electrodes[i]->name);
+        }
+
+        return names;
+    }
+
+    float LfpViewer::LfpDisplayNode::getDefaultThreshold()
+    {
+        return 4.0f;
+    }
+
+    int LfpViewer::LfpDisplayNode::getChannel(int index, int i)
+    {
+        return *(electrodes[index]->channels + i);
+
+    }
+
+    SimpleElectrode* LfpViewer::LfpDisplayNode::getActiveElectrode()
+    {
+        if (electrodes.size() == 0)
+            return nullptr;
+
+        return electrodes[currentElectrode];
+    }
+
+
 uint32 LfpDisplayNode::getDataSubprocId(int chan) const
 {
     if (chan < 0 || chan >= getTotalDataChannels())
@@ -196,7 +458,7 @@ uint32 LfpDisplayNode::getDataSubprocId(int chan) const
     return getChannelSourceId(getDataChannel(chan));
 }
 
-OwnedArray<Electrode>* LfpViewer::LfpDisplayNode::getElectrodes()
+OwnedArray<SimpleElectrode>* LfpViewer::LfpDisplayNode::getElectrodes()
 {
     return &electrodes;
 }
@@ -310,16 +572,28 @@ bool LfpDisplayNode::disable()
 
 void LfpDisplayNode::setParameter (int parameterIndex, float newValue)
 {
-    editor->updateParameterButtons (parameterIndex);
-    //
-    //Sets Parameter in parameters array for processor
-    parameters[parameterIndex]->setValue (newValue, currentChannel);
+    if (parameterIndex == 99 && currentElectrode > -1)
+    {
+        *(electrodes[currentElectrode]->thresholds + currentChannelIndex) = newValue;
+    }
+    else if (parameterIndex == 98 && currentElectrode > -1)
+    {
+        if (newValue == 0.0f)
+            *(electrodes[currentElectrode]->isActive + currentChannelIndex) = false;
+        else
+            *(electrodes[currentElectrode]->isActive + currentChannelIndex) = true;
+    }
 
-    //std::cout << "Saving Parameter from " << currentChannel << ", channel ";
+    //editor->updateParameterButtons (parameterIndex);
+    ////
+    ////Sets Parameter in parameters array for processor
+    //parameters[parameterIndex]->setValue (newValue, currentChannel);
 
-    LfpDisplayEditor* ed = (LfpDisplayEditor*) getEditor();
-    if (ed->canvas != 0)
-        ed->canvas->setParameter (parameterIndex, newValue);
+    ////std::cout << "Saving Parameter from " << currentChannel << ", channel ";
+
+    //LfpDisplayEditor* ed = (LfpDisplayEditor*) getEditor();
+    //if (ed->canvas != 0)
+    //    ed->canvas->setParameter (parameterIndex, newValue);
 }
 
 
@@ -505,6 +779,8 @@ void LfpDisplayNode::finalizeEventChannels()
         
     displayBufferIndex.set(chan, newIdx);
 }
+
+
 
 
 void LfpDisplayNode::process (AudioSampleBuffer& buffer)

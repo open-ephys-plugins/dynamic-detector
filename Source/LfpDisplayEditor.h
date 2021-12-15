@@ -44,7 +44,8 @@ class LfpDisplayCanvas;
 */
 
 class LfpDisplayEditor : public VisualizerEditor,
-                         public ComboBox::Listener
+    public ComboBox::Listener,
+    public Label::Listener
 {
 public:
     LfpDisplayEditor(GenericProcessor*, bool useDefaultParameterEditors);
@@ -92,6 +93,40 @@ private:
     bool hasNoInputs;
 
 	int defaultSubprocessor;
+
+    // TODO: use managed ptr to avoid memory leak
+    ComboBox* electrodeTypes;
+    ComboBox* electrodeList;
+    Label* numElectrodes;
+    Label* thresholdLabel;
+    TriangleButton* upButton;
+    TriangleButton* downButton;
+    UtilityButton* plusButton;
+    ToggleButton* enableBtn;
+
+    ThresholdSlider* thresholdSlider;
+
+    OwnedArray<ElectrodeButton> electrodeButtons;
+    Array<ElectrodeEditorButton*> electrodeEditorButtons;
+
+    ComboBox* detectionMethod;
+    ComboBox* detectionSign;
+    Label* detectionMethodLabel;
+    Label* thresholdTextBox;
+    TextButton* setAllThresholdBtn; //button to set all threshold
+
+    void editElectrode(int index, int chan, int newChan);
+
+    int lastId;
+    bool isPlural;
+
+    void labelTextChanged(Label* label);
+    Font font;
+
+    bool addElectrode(int nChans, int electrodeID=0);
+    void refreshElectrodeList();
+    void drawElectrodeButtons(int ID);
+    void removeElectrode(int index);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LfpDisplayEditor);
 
