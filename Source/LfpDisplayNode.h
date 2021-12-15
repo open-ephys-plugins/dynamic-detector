@@ -127,14 +127,15 @@ namespace LfpViewer
 
 		int64 getDisplayBufferStartTimestamp();
 
+		//Spike detection related
+
 		StringArray electrodeTypes;
 		StringArray detectionMethod; //method of detection
 		StringArray detectionSign; //direction of detection
 		String curDetectionMethod;
 		String curDetectionSign;
 
-		//Spike detection related
-		void computeMedianThreshold(SimpleElectrode* electrode, int nSamples, int& sample_counter, std::vector<std::vector<float>>& dyn_thresholds, int& window_number);
+		void updateMedianThreshold(AudioSampleBuffer* buffer, Array<float>& dyn_thresholds);
 		void computeSimpleThreshold(SimpleElectrode* electrode, std::vector<std::vector<float>>& thresholds);
 		int getNumChannels(int index);
 		double getChannelThreshold(int electrodeNum, int channelNum);
@@ -200,6 +201,8 @@ namespace LfpViewer
 		int currentElectrode;
 		int currentChannelIndex;
 		int currentIndex;
+		Array<float> dyn_thresholds; //per channel
+		bool needUpdateThreshold = false;
 
 
 		JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LfpDisplayNode);

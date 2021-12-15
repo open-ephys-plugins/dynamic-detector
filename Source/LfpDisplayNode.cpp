@@ -211,59 +211,109 @@ void LfpViewer::LfpDisplayNode::updateSpikeElectrodeInfo()
         electrode2channel.add(electrodeMapping);
     }
 }
+//
+//void LfpViewer::LfpDisplayNode::updateMedianThreshold(AudioSampleBuffer& buffer, Array<float>* dyn_threshold, float factor)
+//{
+//    // update the underlying threshold for each channel
+//    // Loop through each cahnnel, get the stored threshold factor, then multiple it to the median
+//    int dataChanIdx = 0;
+//    for (int electrodeIdx = 0; electrodeIdx<electrodes.size(); electrodeIdx++) {
+//        for (int chanIdx = 0; chanIdx < electrodes[electrodeIdx]->numChannels; chanIdx++) {
+//
+//            // copy channel data for sorting
+//            float* channel_array = buffer.getWritePointer(dataChanIdx);
+//            std::vector<float> temp_values;
+//            temp_values.insert(temp_values.end(), channel_array, &channel_array[buffer.getNumSamples()]);
+//
+//            std::sort(temp_values.begin(), temp_values.end());
+//
+//            SimpleElectrode* electrode = electrodes[electrodeIdx];
+//            float Threshold = float(*(electrode->thresholds + chanIdx));
+//            (*dyn_thresholds)[dataChanIdx] = Threshold * temp_values[floor((float)temp_values.size() / 2)];
+//
+//            dataChanIdx++;
+//        }
+//
+//    }
+//
+//
+//
+//    //for (int chan = 0; chan < electrode->numChannels; chan++)
+//    //{
+//    //    int currentChannel = *(electrode->channels + chan);
+//    //    std::vector<float> temp_values(window_size); //data in temp_value: [ch1,ch2,ch3,ch4,ch1,ch2,ch3,ch4...]
+//
+//    //                                                 // loop through the data on the buffer
+//    //    while (samplesAvailable(nSamples))
+//    //    {
+//    //        sampleIndex++; //move forward one sample for getNextSample
+//
+//    //                       //get the sample data and store it in a vector
+//    //        temp_values[sample_counter] = abs(getNextSample(currentChannel)) / scalar; //getNextSample is getting sample at sampleIndex
+//    //        if (sample_counter == window_size - 1) //when the temp_value buffer is full, update the threshold
+//    //        {
+//    //            // Compute Threshold using values in 'temp_values'
+//    //            std::sort(temp_values.begin(), temp_values.end()); //sort
+//    //            float factor = float(*(electrode->thresholds + chan)); //get the threshold factor
+//
+//    //                                                                   //median of sorted value * factor
+//    //            dyn_thresholds[chan][window_number] = factor * temp_values[floor((float)temp_values.size() / 2)];
+//    //            window_number++;
+//    //            sample_counter = 0;
+//
+//    //        }
+//    //        else
+//    //        {
+//    //            sample_counter++;
+//    //        }
+//    //    }
+//    //    // Check last window
+//    //    if (sample_counter != 0)
+//    //    {
+//    //        // Remove empty elements from 'temp_values'
+//    //        temp_values.erase(temp_values.begin() + sample_counter, temp_values.end());
+//
+//    //        // Compute Threshold using values in 'temp_values'
+//    //        std::sort(temp_values.begin(), temp_values.end());
+//    //        float Threshold = float(*(electrode->thresholds + chan));
+//    //        dyn_thresholds[chan][window_number] = Threshold * temp_values[floor((float)temp_values.size() / 2)];
+//    //    }
+//
+//    //    // Restart indexes from the beginning
+//    //    sampleIndex = electrode->lastBufferIndex - 1;
+//    //    window_number = 0;
+//    //    sample_counter = 0;
+//    //}
+//}
 
-void LfpViewer::LfpDisplayNode::computeMedianThreshold(SimpleElectrode* electrode, int nSamples, int& sample_counter, std::vector<std::vector<float>>& dyn_thresholds, int& window_number)
+
+void LfpViewer::LfpDisplayNode::updateMedianThreshold(AudioSampleBuffer* buffer, Array<float>& dyn_thresholds)
 {
-    //for (int chan = 0; chan < electrode->numChannels; chan++)
-    //{
-    //    int currentChannel = *(electrode->channels + chan);
-    //    std::vector<float> temp_values(window_size); //data in temp_value: [ch1,ch2,ch3,ch4,ch1,ch2,ch3,ch4...]
+    int dataChanIdx = 0;
+    for (int electrodeIdx = 0; electrodeIdx < electrodes.size(); electrodeIdx++) {
+        for (int chanIdx = 0; chanIdx < electrodes[electrodeIdx]->numChannels; chanIdx++) {
 
-    //                                                 // loop through the data on the buffer
-    //    while (samplesAvailable(nSamples))
-    //    {
-    //        sampleIndex++; //move forward one sample for getNextSample
+            // copy channel data for sorting
+            float* channel_array = buffer->getWritePointer(dataChanIdx);
+            std::vector<float> temp_values;
+            temp_values.insert(temp_values.begin(), channel_array, &channel_array[buffer->getNumSamples()]);
 
-    //                       //get the sample data and store it in a vector
-    //        temp_values[sample_counter] = abs(getNextSample(currentChannel)) / scalar; //getNextSample is getting sample at sampleIndex
-    //        if (sample_counter == window_size - 1) //when the temp_value buffer is full, update the threshold
-    //        {
-    //            // Compute Threshold using values in 'temp_values'
-    //            std::sort(temp_values.begin(), temp_values.end()); //sort
-    //            float factor = float(*(electrode->thresholds + chan)); //get the threshold factor
+            std::sort(temp_values.begin(), temp_values.end());
 
-    //                                                                   //median of sorted value * factor
-    //            dyn_thresholds[chan][window_number] = factor * temp_values[floor((float)temp_values.size() / 2)];
-    //            window_number++;
-    //            sample_counter = 0;
+            SimpleElectrode* electrode = electrodes[electrodeIdx];
+            float Threshold = float(*(electrode->thresholds + chanIdx));
+            float threshold_val = Threshold * temp_values[floor((float)temp_values.size() / 2)];
+            printf("Channel %d updated with threshold %.2f\n", dataChanIdx, threshold_val);
+            dyn_thresholds.set(dataChanIdx, threshold_val);
 
-    //        }
-    //        else
-    //        {
-    //            sample_counter++;
-    //        }
-    //    }
-    //    // Check last window
-    //    if (sample_counter != 0)
-    //    {
-    //        // Remove empty elements from 'temp_values'
-    //        temp_values.erase(temp_values.begin() + sample_counter, temp_values.end());
+            dataChanIdx++;
 
-    //        // Compute Threshold using values in 'temp_values'
-    //        std::sort(temp_values.begin(), temp_values.end());
-    //        float Threshold = float(*(electrode->thresholds + chan));
-    //        dyn_thresholds[chan][window_number] = Threshold * temp_values[floor((float)temp_values.size() / 2)];
-    //    }
+        }
 
-    //    // Restart indexes from the beginning
-    //    sampleIndex = electrode->lastBufferIndex - 1;
-    //    window_number = 0;
-    //    sample_counter = 0;
-    //}
+    }
 }
 
-
-    void LfpViewer::LfpDisplayNode::computeSimpleThreshold(SimpleElectrode* electrode, std::vector<std::vector<float>>& thresholds)
+void LfpViewer::LfpDisplayNode::computeSimpleThreshold(SimpleElectrode* electrode, std::vector<std::vector<float>>& thresholds)
 {
     //set all channel to be the same
 
@@ -808,13 +858,17 @@ void LfpDisplayNode::process (AudioSampleBuffer& buffer)
         if (this->electrode2channel.size() == 0)
             updateSpikeElectrodeInfo();
 
-       
+        for (int i = 0; i < getTotalDataChannels(); i++) {
+            dyn_thresholds.add(getDefaultThreshold());
+        }
+
 		if (true)
 		{
 			int channelIndex = -1;
 
 			for (int chan = 0; chan < buffer.getNumChannels(); ++chan)
 			{
+                //Copy data to displaybuffer
 				if (getDataSubprocId(chan) == subprocessorToDraw)
 				{
 					channelIndex++;
@@ -863,9 +917,18 @@ void LfpDisplayNode::process (AudioSampleBuffer& buffer)
                         if (chan == 0)
                             std::cout << "displayBufferStartTimestamp: " << displayBufferStartTimestamp << std::endl;
                         
+                        needUpdateThreshold = true;
 					}
 				}
 			}
+
+            // do spike detection
+            // 1. compute detection threshold
+            // 2. detect spikes
+            if (needUpdateThreshold) {
+                updateMedianThreshold(displayBuffer.get(), dyn_thresholds);
+                needUpdateThreshold = false;
+            }
 		}
 	}
 }
